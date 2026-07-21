@@ -19,6 +19,9 @@ const heroSliderRoutes = require('./routes/heroSliderRoutes');
 
 const app = express();
 
+// When deployed behind proxy hosts (Railway, Vercel, etc.), trust X-Forwarded-* headers
+app.set('trust proxy', 1);
+
 // Security middleware - allow cross-origin resource policy for static uploads
 app.use(
   helmet({
