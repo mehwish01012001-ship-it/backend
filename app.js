@@ -17,6 +17,7 @@ const couponRoutes = require('./routes/couponRoutes');
 const compareRoutes = require('./routes/compareRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const heroSliderRoutes = require('./routes/heroSliderRoutes');
+const sitemapRoutes = require('./routes/sitemap');
 
 const app = express();
 
@@ -73,6 +74,7 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/compare', compareRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/hero-slider', heroSliderRoutes);
+app.use('/', sitemapRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
