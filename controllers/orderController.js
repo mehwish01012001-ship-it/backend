@@ -2,7 +2,7 @@ const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const { generateOrderNumber, calculatePagination } = require('../utils/helpers');
-const { sendOrderConfirmationEmail } = require('../services/emailService');
+const sendOrderEmail = require('../utils/sendOrderEmail');
 
 exports.createOrder = async (req, res) => {
   try {
@@ -75,12 +75,11 @@ exports.createOrder = async (req, res) => {
 
     await Cart.findOneAndDelete({ user: req.user._id });
 
-    await sendOrderConfirmationEmail(
-      req.user.email,
-      orderNumber,
-      items,
-      totalAmount
-    );
+    try {
+      await sendOrderEmail(order);
+    } catch (emailError) {
+      console.error('Order email failed:', emailError);
+    }
 
     res.status(201).json({
       success: true,
