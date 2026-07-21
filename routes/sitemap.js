@@ -11,7 +11,7 @@ router.get('/sitemap.xml', async (req, res) => {
       .select('slug updatedAt createdAt')
       .lean();
 
-    const baseUrl = 'https://backend-production-a2eb.up.railway.app';
+   const baseUrl = 'https://frontend-one-wheat-45.vercel.app';
 
     const pages = [
       { url: '/', changefreq: 'daily', priority: 1.0 },
