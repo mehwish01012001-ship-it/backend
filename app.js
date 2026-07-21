@@ -14,6 +14,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
 const couponRoutes = require('./routes/couponRoutes');
+const compareRoutes = require('./routes/compareRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const heroSliderRoutes = require('./routes/heroSliderRoutes');
 
@@ -69,6 +70,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/compare', compareRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/hero-slider', heroSliderRoutes);
 

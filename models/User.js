@@ -62,6 +62,12 @@ const userSchema = new mongoose.Schema({
       ref: 'Product',
     },
   ],
+  compare: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+    },
+  ],
   isEmailVerified: {
     type: Boolean,
     default: false,
