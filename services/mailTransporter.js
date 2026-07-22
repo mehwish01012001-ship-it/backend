@@ -1,5 +1,4 @@
 const nodemailer = require("nodemailer");
-const dns = require("dns");
 
 const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
 const emailPort = Number(process.env.EMAIL_PORT) || 465;
@@ -30,37 +29,22 @@ const transporter = nodemailer.createTransport({
     rateDelta: 2000,
     rateLimit: 7,
   },
-  // Force IPv4 only (avoid IPv6 connectivity issues)
+  // Force IPv4 only via direct DNS configuration
   family: 4,
-  lookup: (hostname, options, callback) => {
-    // Use callback-based dns.lookup with explicit family: 4
-    dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-      if (err) {
-        console.error(`⚠️  DNS IPv4 lookup failed for ${hostname}:`, err.code);
-        // Try IPv6 as fallback (some environments may only have IPv6)
-        dns.lookup(hostname, { family: 6 }, (err6, address6, family6) => {
-          if (err6) {
-            console.error(`⚠️  DNS IPv6 fallback also failed:`, err6.code);
-            return callback(err);
-          }
-          console.warn(`⚠️  Using IPv6 fallback for ${hostname}: ${address6}`);
-          callback(null, address6, family6);
-        });
-        return;
-      }
-      console.log(`✅ IPv4 DNS resolved: ${hostname} -> ${address}`);
-      callback(null, address, family);
-    });
-  },
 });
 
-// Verify transporter connection on startup
-transporter.verify((err, success) => {
-  if (err) {
-    console.error('❌ Email transporter verification failed:', err.message);
-  } else {
-    console.log('✅ Email transporter verified and ready');
-  }
+// Verify transporter connection on startup (non-blocking)
+setImmediate(() => {
+  transporter.verify((err, success) => {
+    if (err) {
+      console.error('⚠️  Email transporter verification failed:', err.message);
+      console.error('   Emails may not work, but server will continue running.');
+    } else {
+      console.log('✅ Email transporter verified and ready');
+    }
+  }).catch((error) => {
+    console.error('⚠️  Email transporter verify error:', error.message);
+  });
 });
 
 module.exports = transporter;
