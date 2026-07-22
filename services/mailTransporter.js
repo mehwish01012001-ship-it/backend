@@ -1,3 +1,6 @@
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
+
 const nodemailer = require("nodemailer");
 
 const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
@@ -12,6 +15,7 @@ const transporter = nodemailer.createTransport({
   host: emailHost,
   port: emailPort,
   secure: emailSecure,
+    family: 4,
   auth: {
     user: emailUser,
     pass: emailPass,
