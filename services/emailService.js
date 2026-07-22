@@ -16,25 +16,28 @@ const sendWithRetry = async (mailOptions, maxRetries = 5) => {
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      await transporter.sendMail(mailOptions);
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`✅ Email sent successfully on attempt ${attempt}:`, info.messageId);
       return;
     } catch (error) {
       lastError = error;
       const isLastAttempt = attempt === maxRetries;
+      const errorCode = error.code || error.name || 'UNKNOWN';
+      
       console.error(
-        `Email send attempt ${attempt}/${maxRetries} failed (${error.code || error.name}):`,
+        `❌ Email attempt ${attempt}/${maxRetries} failed (${errorCode}):`,
         error.message
       );
       
       if (!isLastAttempt) {
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000);
-        console.log(`Retrying in ${delay}ms...`);
+        console.log(`⏳ Retrying in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  console.error(`Email delivery failed after ${maxRetries} attempts:`, lastError.message);
-  throw lastError;
+  console.error(`❌ Email delivery failed after ${maxRetries} attempts (${lastError.code || lastError.name}):`, lastError.message);
+  // Don't throw - let background tasks fail silently
 };
 
 // Welcome Email
