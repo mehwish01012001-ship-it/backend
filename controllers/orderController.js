@@ -202,6 +202,8 @@ exports.createOrder = async (req, res) => {
     // Asynchronously dispatch email notifications in background
     const customerEmail = req.user?.email || shippingAddress.email;
 
+    console.log(`📧 Order #${order.orderNumber} placed. Sending emails to admin and customer...`);
+    
     Promise.allSettled([
       sendOrderEmail(order),
       customerEmail
@@ -213,9 +215,12 @@ exports.createOrder = async (req, res) => {
           )
         : Promise.resolve(),
     ]).then((results) => {
-      results.forEach((result) => {
-        if (result.status === 'rejected') {
-          console.error('EMAIL ERROR:', result.reason?.message || result.reason);
+      results.forEach((result, index) => {
+        const emailType = index === 0 ? 'ADMIN' : 'CUSTOMER';
+        if (result.status === 'fulfilled') {
+          console.log(`✅ ${emailType} email dispatched successfully`);
+        } else {
+          console.error(`❌ ${emailType} email failed:`, result.reason?.message || result.reason);
         }
       });
     });

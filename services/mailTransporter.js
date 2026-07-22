@@ -1,8 +1,8 @@
 const nodemailer = require("nodemailer");
 
 const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
-const emailPort = Number(process.env.EMAIL_PORT) || 465;
-const emailSecure = process.env.EMAIL_SECURE === "true" || emailPort === 465;
+const emailPort = Number(process.env.EMAIL_PORT) || 587; // Changed from 465 to 587 for better Docker compatibility
+const emailSecure = process.env.EMAIL_SECURE === "true" && emailPort === 465; // Only secure for port 465
 const emailUser = process.env.EMAIL_USER;
 const emailPass = process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD;
 
@@ -29,8 +29,6 @@ const transporter = nodemailer.createTransport({
     rateDelta: 2000,
     rateLimit: 7,
   },
-  // Force IPv4 only via direct DNS configuration
-  family: 4,
 });
 
 // Verify transporter connection on startup (non-blocking)

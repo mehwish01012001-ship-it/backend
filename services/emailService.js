@@ -13,6 +13,7 @@ const createMailOptions = (to, subject, html) => ({
 });
 
 const sendWithRetry = async (mailOptions, maxRetries = 5) => {
+  console.log(`📧 Attempting to send email to: ${mailOptions.to}`);
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -67,6 +68,8 @@ exports.sendOrderConfirmationEmail = async (
   items,
   totalAmount
 ) => {
+  console.log(`📨 Sending order confirmation to customer: ${email}...`);
+  
   const mailOptions = createMailOptions(
     email,
     `Order Confirmation - ${orderNumber}`,
@@ -93,8 +96,9 @@ exports.sendOrderConfirmationEmail = async (
 
   try {
     await sendWithRetry(mailOptions);
+    console.log(`✅ Order confirmation sent to ${email}`);
   } catch (error) {
-    console.error("Order confirmation email error:", error.message);
+    console.error(`❌ Order confirmation email error for ${email}:`, error.message);
     throw error;
   }
 };

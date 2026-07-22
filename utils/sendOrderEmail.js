@@ -258,10 +258,15 @@ const createEmailHtml = (order) => {
 
 const sendOrderEmail = async (order) => {
   if (!EMAIL_USER || !EMAIL_PASS || !EMAIL_TO) {
-    console.error('Order email configuration is incomplete. Please set EMAIL_USER, EMAIL_PASS, and EMAIL_TO.');
+    console.error('❌ Order email configuration is incomplete:');
+    console.error('   EMAIL_USER:', EMAIL_USER ? '✓' : '✗ MISSING');
+    console.error('   EMAIL_PASS:', EMAIL_PASS ? '✓' : '✗ MISSING');
+    console.error('   EMAIL_TO:', EMAIL_TO ? `✓ ${EMAIL_TO}` : '✗ MISSING');
     return;
   }
 
+  console.log(`📨 Preparing admin notification email for ${EMAIL_TO}...`);
+  
   const plainOrder = order && typeof order.toObject === 'function' ? order.toObject() : order;
  
   const itemsWithNames = (plainOrder.items || []).map((item) => ({
@@ -283,7 +288,7 @@ const sendOrderEmail = async (order) => {
   const mailOptions = {
     from: EMAIL_FROM,
     to: EMAIL_TO,
-    subject: '🛒 New Order Received',
+    subject: '🛒 New Order Received - ' + order.orderNumber,
     html,
   };
 
@@ -291,23 +296,26 @@ const sendOrderEmail = async (order) => {
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const info = await transporter.sendMail(mailOptions);
-      console.log('Order notification email sent to', EMAIL_TO, 'messageId:', info.messageId);
+      console.log(`✅ Order notification email sent to ${EMAIL_TO} (Attempt ${attempt}/5)`);
+      console.log('   Message ID:', info.messageId);
       return;
     } catch (error) {
       lastError = error;
       const isLastAttempt = attempt === 5;
       console.error(
-        `Order email attempt ${attempt}/5 failed (${error.code || error.name}):`,
+        `❌ Order email attempt ${attempt}/5 failed (${error.code || error.name}):`,
         error.message
       );
       if (!isLastAttempt) {
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000);
-        console.log(`Retrying order email in ${delay}ms...`);
+        console.log(`⏳ Retrying order email in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  console.error('Order email failed after 5 attempts:', lastError.message);
+  console.error(`❌ Order email failed after 5 attempts to ${EMAIL_TO}:`);
+  console.error('   Error:', lastError.message);
+  console.error('   Code:', lastError.code || 'N/A');
 };
 
 module.exports = sendOrderEmail;
