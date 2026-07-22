@@ -55,6 +55,7 @@ const orderSchema = new mongoose.Schema({
   },
   shippingAddress: {
     fullName: String,
+    email: String,
     phone: String,
     addressLine1: String,
     addressLine2: String,
@@ -65,6 +66,7 @@ const orderSchema = new mongoose.Schema({
   },
   billingAddress: {
     fullName: String,
+    email: String,
     phone: String,
     addressLine1: String,
     addressLine2: String,

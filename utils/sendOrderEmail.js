@@ -3,7 +3,7 @@ const Product = require('../models/Product');
 
 const EMAIL_USER = process.env.EMAIL_USER || process.env.SMTP_EMAIL;
 const EMAIL_PASS = process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || process.env.SMTP_PASSWORD;
-const EMAIL_TO = process.env.EMAIL_TO;
+const EMAIL_TO = process.env.EMAIL_TO || EMAIL_USER;
 const EMAIL_FROM = process.env.EMAIL_FROM || EMAIL_USER || process.env.SMTP_FROM;
 const EMAIL_HOST = process.env.EMAIL_HOST || 'smtp.gmail.com';
 const EMAIL_PORT = process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : 587;
@@ -17,6 +17,17 @@ const transporter = nodemailer.createTransport({
     user: EMAIL_USER,
     pass: EMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
+
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('Order email transporter verification failed:', error);
+  } else {
+    console.log('Order email transporter is ready to send messages.');
+  }
 });
 
 const formatCurrency = (value) => {
@@ -317,7 +328,8 @@ const sendOrderEmail = async (order) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Order notification email sent to', EMAIL_TO, 'messageId:', info.messageId);
   } catch (error) {
     console.error('Order email failed:', error);
   }

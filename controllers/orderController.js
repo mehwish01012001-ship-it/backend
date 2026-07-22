@@ -13,6 +13,7 @@ const normalizeAddress = (address) => {
 
   return {
     fullName,
+    email: address.email || '',
     phone: address.phone || '',
     addressLine1: address.addressLine1 || address.address || '',
     addressLine2: address.addressLine2 || '',
@@ -125,8 +126,9 @@ exports.createOrder = async (req, res) => {
 
     try {
       await sendOrderEmail(order);
-      if (req.user?.email) {
-        await sendOrderConfirmationEmail(req.user.email, order.orderNumber, order.items, totalAmount);
+      const customerEmail = req.user?.email || shippingAddress.email;
+      if (customerEmail) {
+        await sendOrderConfirmationEmail(customerEmail, order.orderNumber, order.items, totalAmount);
       }
     } catch (emailError) {
       console.error('Order email failed:', emailError);
