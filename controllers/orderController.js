@@ -113,20 +113,24 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    const quantityByProduct = items.reduce((map, item) => {
+      const productId = String(item.product);
+      const quantity = Number(item.quantity) || 0;
+      map.set(productId, (map.get(productId) || 0) + quantity);
+      return map;
+    }, new Map());
 
+    const productIds = Array.from(quantityByProduct.keys());
+    const products = await Product.find({ _id: { $in: productIds } }).lean();
+    const productMap = new Map(products.map((product) => [String(product._id), product]));
 
     let totalAmount = 0;
-
     const orderItems = [];
+    const stockUpdates = [];
 
-
-
-    // Check products and stock
     for (const item of items) {
-
-
-      const product = await Product.findById(item.product);
-
+      const productId = String(item.product);
+      const product = productMap.get(productId);
 
       if (!product) {
         return res.status(404).json({
@@ -135,49 +139,44 @@ exports.createOrder = async (req, res) => {
         });
       }
 
-
-
-      if (product.stock < item.quantity) {
-
+      const totalQuantity = quantityByProduct.get(productId) || 0;
+      if (product.stock < totalQuantity) {
         return res.status(400).json({
           success:false,
           message:`Insufficient stock for ${product.name}`
         });
-
       }
 
+      totalAmount += product.price * (Number(item.quantity) || 0);
 
-
-      totalAmount += product.price * item.quantity;
-
-
-
-      product.stock -= item.quantity;
-
-      await product.save();
-
-
+      if (!stockUpdates.some((update) => String(update.updateOne.filter._id) === productId)) {
+        stockUpdates.push({
+          updateOne: {
+            filter: { _id: productId, stock: { $gte: totalQuantity } },
+            update: { $inc: { stock: -totalQuantity } },
+          },
+        });
+      }
 
       orderItems.push({
-
         product:item.product,
-
         productName:product.name,
-
         quantity:item.quantity,
-
         price:product.price,
-
         size:item.size || "",
-
         color:item.color || ""
-
       });
-
-
     }
 
-
+    if (stockUpdates.length > 0) {
+      const bulkResult = await Product.bulkWrite(stockUpdates, { ordered: true });
+      if (bulkResult.modifiedCount !== stockUpdates.length) {
+        return res.status(400).json({
+          success:false,
+          message:"Failed to update product stock. Please retry."
+        });
+      }
+    }
 
     const orderNumber = generateOrderNumber();
 
@@ -225,22 +224,39 @@ exports.createOrder = async (req, res) => {
 
 
 
-    // EMAILS
+    res.status(201).json({
 
-    try {
+      success:true,
+
+      message:"Order created successfully",
+
+      order
+
+    });
 
 
-      // Admin email
 
-      await sendOrderEmail(order);
+    const customerEmail =
+      req.user?.email ||
+      shippingAddress.email;
 
-
-
-      // Customer email
-
-      const customerEmail =
-        req.user?.email ||
-        shippingAddress.email;
+    Promise.allSettled([
+      sendOrderEmail(order),
+      customerEmail
+        ? sendOrderConfirmationEmail(
+            customerEmail,
+            order.orderNumber,
+            order.items,
+            totalAmount
+          )
+        : Promise.resolve(),
+    ]).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") {
+          console.log("EMAIL ERROR:", result.reason?.message || result.reason);
+        }
+      });
+    });
 
 
 
