@@ -89,7 +89,7 @@ router.get('/sitemap.xml', async (req, res) => {
       { url: '/faq', changefreq: 'daily', priority: 0.8 },
       { url: '/shop', changefreq: 'daily', priority: 0.9 },
       { url: '/termsconditions', changefreq: 'daily', priority: 0.7 },
-      { url: '/privacy-policy', changefreq: 'daily', priority: 0.7 },
+      { url: '/privacypolicy', changefreq: 'daily', priority: 0.7 },
     ];
 
     const productUrls = products
