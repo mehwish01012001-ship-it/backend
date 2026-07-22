@@ -34,6 +34,24 @@ exports.createOrder = async (req, res) => {
       }
     }
 
+    if (Array.isArray(items)) {
+      items = items.map((item) => {
+        if (item && typeof item === 'object') {
+          const rawProduct = item.product;
+          const productId =
+            rawProduct && typeof rawProduct === 'object'
+              ? rawProduct._id || rawProduct.id
+              : rawProduct;
+          return {
+            ...item,
+            product: productId,
+            quantity: Number(item.quantity) || 0,
+          };
+        }
+        return item;
+      });
+    }
+
     if (typeof shippingAddress === 'string') {
       try {
         shippingAddress = JSON.parse(shippingAddress);

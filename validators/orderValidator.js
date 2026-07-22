@@ -8,12 +8,18 @@ exports.createOrderValidator = [
       return (
         Array.isArray(items) &&
         items.length > 0 &&
-        items.every(
-          (item) =>
-            item &&
-            (typeof item.product === 'string' || typeof item.product === 'number') &&
+        items.every((item) => {
+          if (!item || typeof item !== 'object') return false;
+          const product = item.product;
+          const productId =
+            product && typeof product === 'object'
+              ? product._id || product.id
+              : product;
+          return (
+            (typeof productId === 'string' || typeof productId === 'number') &&
             Number(item.quantity) > 0
-        )
+          );
+        })
       );
     } catch {
       return false;
