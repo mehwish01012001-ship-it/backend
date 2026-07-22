@@ -26,130 +26,284 @@ const normalizeAddress = (address) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    let { items, shippingAddress, billingAddress, paymentMethod, paymentNumber, notes, coupon } = req.body;
+    let {
+      items,
+      shippingAddress,
+      billingAddress,
+      paymentMethod,
+      paymentNumber,
+      notes,
+      coupon
+    } = req.body;
 
-    if (typeof items === 'string') {
+
+    // Parse items if sent as string
+    if (typeof items === "string") {
       try {
         items = JSON.parse(items);
-      } catch (err) {
-        return res.status(400).json({ success: false, message: 'Invalid items payload' });
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid items payload"
+        });
       }
     }
 
+
+    // Normalize items
     if (Array.isArray(items)) {
       items = items.map((item) => {
-        if (item && typeof item === 'object') {
-          const rawProduct = item.product;
-          const productId =
-            rawProduct && typeof rawProduct === 'object'
-              ? rawProduct._id || rawProduct.id
-              : rawProduct;
-          return {
-            ...item,
-            product: productId,
-            quantity: Number(item.quantity) || 0,
-          };
-        }
-        return item;
+
+        const rawProduct = item.product;
+
+        const productId =
+          rawProduct && typeof rawProduct === "object"
+            ? rawProduct._id || rawProduct.id
+            : rawProduct;
+
+
+        return {
+          ...item,
+          product: productId,
+          quantity: Number(item.quantity) || 0
+        };
+
       });
     }
 
-    if (typeof shippingAddress === 'string') {
+
+
+    // Parse shipping address
+    if (typeof shippingAddress === "string") {
       try {
         shippingAddress = JSON.parse(shippingAddress);
-      } catch (err) {
-        return res.status(400).json({ success: false, message: 'Invalid shipping address payload' });
+      } catch (error) {
+        return res.status(400).json({
+          success:false,
+          message:"Invalid shipping address"
+        });
       }
     }
 
-    if (typeof billingAddress === 'string') {
+
+
+    // Parse billing address
+    if (typeof billingAddress === "string") {
       try {
         billingAddress = JSON.parse(billingAddress);
-      } catch (err) {
+      } catch {
         billingAddress = null;
       }
     }
 
+
+
     shippingAddress = normalizeAddress(shippingAddress);
-    billingAddress = normalizeAddress(billingAddress || shippingAddress);
+
+    billingAddress = normalizeAddress(
+      billingAddress || shippingAddress
+    );
+
+
 
     if (!items || items.length === 0) {
-      return res.status(400).json({ success: false, message: 'Cart is empty' });
-    }
-
-    let totalAmount = 0;
-    const orderItems = [];
-
-    for (const item of items) {
-      const product = await Product.findById(item.product);
-
-      if (!product) {
-        return res.status(404).json({ success: false, message: `Product not found: ${item.product}` });
-      }
-
-      if (product.stock < item.quantity) {
-        return res.status(400).json({ success: false, message: `Insufficient stock for ${product.name}` });
-      }
-
-      totalAmount += product.price * item.quantity;
-      product.stock -= item.quantity;
-      await product.save();
-
-      orderItems.push({
-        product: item.product,
-        quantity: item.quantity,
-        price: product.price,
-        size: item.size,
-        color: item.color,
+      return res.status(400).json({
+        success:false,
+        message:"Cart is empty"
       });
     }
 
+
+
+    let totalAmount = 0;
+
+    const orderItems = [];
+
+
+
+    // Check products and stock
+    for (const item of items) {
+
+
+      const product = await Product.findById(item.product);
+
+
+      if (!product) {
+        return res.status(404).json({
+          success:false,
+          message:`Product not found: ${item.product}`
+        });
+      }
+
+
+
+      if (product.stock < item.quantity) {
+
+        return res.status(400).json({
+          success:false,
+          message:`Insufficient stock for ${product.name}`
+        });
+
+      }
+
+
+
+      totalAmount += product.price * item.quantity;
+
+
+
+      product.stock -= item.quantity;
+
+      await product.save();
+
+
+
+      orderItems.push({
+
+        product:item.product,
+
+        productName:product.name,
+
+        quantity:item.quantity,
+
+        price:product.price,
+
+        size:item.size || "",
+
+        color:item.color || ""
+
+      });
+
+
+    }
+
+
+
     const orderNumber = generateOrderNumber();
 
-    const paymentReceipt = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+    const paymentReceipt =
+      req.file
+      ? `/uploads/${req.file.filename}`
+      : undefined;
+
+
 
     const order = await Order.create({
+
       orderNumber,
-      user: req.user._id,
-      items: orderItems,
+
+     user: req.user?._id, 
+
+      items:orderItems,
+
       totalAmount,
+
       shippingAddress,
-      billingAddress: billingAddress || shippingAddress,
+
+      billingAddress,
+
       paymentMethod,
+
       paymentNumber,
+
       paymentReceipt,
+
       notes,
-      ...(coupon ? { coupon } : {}),
+
+      ...(coupon ? {coupon}:{})
+
     });
 
-    await Cart.findOneAndDelete({ user: req.user._id });
 
-   const customerEmail = req.user?.email || shippingAddress.email;
 
-setImmediate(async () => {
-  try {
-    await sendOrderEmail(order);
+    // Clear cart
 
-    if (customerEmail) {
-      await sendOrderConfirmationEmail(
-        customerEmail,
-        order.orderNumber,
-        order.items,
-        totalAmount
+    await Cart.findOneAndDelete({
+      user:req.user._id
+    });
+
+
+
+    // EMAILS
+
+    try {
+
+
+      // Admin email
+
+      await sendOrderEmail(order);
+
+
+
+      // Customer email
+
+      const customerEmail =
+        req.user?.email ||
+        shippingAddress.email;
+
+
+
+      if(customerEmail){
+
+
+        await sendOrderConfirmationEmail(
+
+          customerEmail,
+
+          order.orderNumber,
+
+          order.items,
+
+          totalAmount
+
+        );
+
+
+      }
+
+
+
+    } catch(error){
+
+
+      console.log(
+        "EMAIL ERROR:",
+        error.message
       );
-    }
-  } catch (emailError) {
-    console.error('Order email failed:', emailError);
-  }
-});
 
-    res.status(201).json({
-      success: true,
-      message: 'Order created successfully',
-      order,
+
+    }
+
+
+
+    return res.status(201).json({
+
+      success:true,
+
+      message:"Order created successfully",
+
+      order
+
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+
+
+
+  } catch(error){
+
+
+    console.log(error);
+
+
+    res.status(500).json({
+
+      success:false,
+
+      message:error.message
+
+    });
+
+
   }
 };
 

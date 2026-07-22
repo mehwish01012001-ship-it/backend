@@ -1,26 +1,12 @@
-const nodemailer = require('nodemailer');
-const Product = require('../models/Product');
+
+const transporter = require("../services/mailTransporter");
 
 const EMAIL_USER = process.env.EMAIL_USER || process.env.SMTP_EMAIL;
 const EMAIL_PASS = process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || process.env.SMTP_PASSWORD;
 const EMAIL_TO = process.env.EMAIL_TO || EMAIL_USER;
 const EMAIL_FROM = process.env.EMAIL_FROM || EMAIL_USER || process.env.SMTP_FROM;
-const EMAIL_HOST = process.env.EMAIL_HOST || 'smtp.gmail.com';
-const EMAIL_PORT = process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : 587;
-const EMAIL_SECURE = process.env.EMAIL_SECURE === 'true' || EMAIL_PORT === 465;
 
-const transporter = nodemailer.createTransport({
-  host: EMAIL_HOST,
-  port: EMAIL_PORT,
-  secure: EMAIL_SECURE,
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+
 
 transporter.verify((error, success) => {
   if (error) {
@@ -283,36 +269,17 @@ const sendOrderEmail = async (order) => {
   }
 
   const plainOrder = order && typeof order.toObject === 'function' ? order.toObject() : order;
-  const itemIds = Array.isArray(plainOrder.items)
-    ? plainOrder.items
-        .map((item) => (item.product && item.product.toString ? item.product.toString() : item.product))
-        .filter(Boolean)
-    : [];
-
-  const productNames = new Map();
-  if (itemIds.length > 0) {
-    try {
-      const products = await Product.find({ _id: { $in: itemIds } }).select('name').lean();
-      products.forEach((product) => {
-        if (product && product._id) {
-          productNames.set(product._id.toString(), product.name);
-        }
-      });
-    } catch (error) {
-      console.error('Failed to load product names for order email:', error);
-    }
-  }
+ 
 
   const itemsWithNames = (plainOrder.items || []).map((item) => ({
-    ...item,
-    productName:
-      item.productName ||
-      item.product?.name ||
-      item.product?.title ||
-      productNames.get(item.product && item.product.toString ? item.product.toString() : item.product) ||
-      item.product ||
-      'Product',
-  }));
+  ...item,
+  productName:
+    item.productName ||
+    item.product?.name ||
+    item.product?.title ||
+    item.product ||
+    'Product',
+}));
 
   const orderWithProducts = {
     ...plainOrder,
