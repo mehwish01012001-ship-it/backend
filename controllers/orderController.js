@@ -124,15 +124,17 @@ exports.createOrder = async (req, res) => {
 
     await Cart.findOneAndDelete({ user: req.user._id });
 
-    try {
-      await sendOrderEmail(order);
-      const customerEmail = req.user?.email || shippingAddress.email;
-      if (customerEmail) {
-        await sendOrderConfirmationEmail(customerEmail, order.orderNumber, order.items, totalAmount);
+    const customerEmail = req.user?.email || shippingAddress.email;
+    setImmediate(async () => {
+      try {
+        await sendOrderEmail(order);
+        if (customerEmail) {
+          await sendOrderConfirmationEmail(customerEmail, order.orderNumber, order.items, totalAmount);
+        }
+      } catch (emailError) {
+        console.error('Order email failed:', emailError);
       }
-    } catch (emailError) {
-      console.error('Order email failed:', emailError);
-    }
+    });
 
     res.status(201).json({
       success: true,
