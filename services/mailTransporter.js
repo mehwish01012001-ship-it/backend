@@ -2,36 +2,38 @@ const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
 
-  host: process.env.EMAIL_HOST || "smtp.gmail.com",
+    host: "smtp.gmail.com",
 
-  port: Number(process.env.EMAIL_PORT) || 587,
+    port: 587,
 
-  secure: process.env.EMAIL_SECURE === "true",
+    secure: false,
 
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD
-  }
+    family: 4,
+
+    auth:{
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
 
 });
 
 
-transporter.verify((error) => {
+transporter.verify((error)=>{
 
-  if (error) {
+    if(error){
 
-    console.log(
-      "SMTP ERROR:",
-      error.message
-    );
+        console.log(
+            "SMTP ERROR:",
+            error.message
+        );
 
-  } else {
+    }else{
 
-    console.log(
-      "SMTP SERVER READY"
-    );
+        console.log(
+            "SMTP SERVER READY"
+        );
 
-  }
+    }
 
 });
 

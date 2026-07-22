@@ -8,13 +8,7 @@ const EMAIL_FROM = process.env.EMAIL_FROM || EMAIL_USER || process.env.SMTP_FROM
 
 
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('Order email transporter verification failed:', error);
-  } else {
-    console.log('Order email transporter is ready to send messages.');
-  }
-});
+
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
