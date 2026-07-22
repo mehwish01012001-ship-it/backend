@@ -4,6 +4,24 @@ const Product = require('../models/Product');
 const { generateOrderNumber, calculatePagination } = require('../utils/helpers');
 const sendOrderEmail = require('../utils/sendOrderEmail');
 
+const normalizeAddress = (address) => {
+  if (!address || typeof address !== 'object') return {};
+
+  const fullName = address.fullName ||
+    [address.firstName, address.lastName].filter(Boolean).join(' ').trim();
+
+  return {
+    fullName,
+    phone: address.phone || '',
+    addressLine1: address.addressLine1 || address.address || '',
+    addressLine2: address.addressLine2 || '',
+    city: address.city || '',
+    state: address.state || '',
+    zipCode: address.zipCode || address.postalCode || '',
+    country: address.country || '',
+  };
+};
+
 exports.createOrder = async (req, res) => {
   try {
     let { items, shippingAddress, billingAddress, paymentMethod, paymentNumber, notes, coupon } = req.body;
@@ -23,6 +41,17 @@ exports.createOrder = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid shipping address payload' });
       }
     }
+
+    if (typeof billingAddress === 'string') {
+      try {
+        billingAddress = JSON.parse(billingAddress);
+      } catch (err) {
+        billingAddress = null;
+      }
+    }
+
+    shippingAddress = normalizeAddress(shippingAddress);
+    billingAddress = normalizeAddress(billingAddress || shippingAddress);
 
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
@@ -70,7 +99,7 @@ exports.createOrder = async (req, res) => {
       paymentNumber,
       paymentReceipt,
       notes,
-      coupon,
+      ...(coupon ? { coupon } : {}),
     });
 
     await Cart.findOneAndDelete({ user: req.user._id });
