@@ -46,7 +46,6 @@ app.use('/api/', limiter);
 // CORS (use centralized options that validate allowed origins)
 const { corsOptions } = require('./config/cors');
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // Body parser
 app.use(express.json({ limit: '50mb' }));
