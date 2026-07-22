@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns").promises;
 
 const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
 const emailPort = Number(process.env.EMAIL_PORT) || 465;
@@ -17,14 +18,25 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
-  connectionTimeout: 15000,
-  socketTimeout: 15000,
+  connectionTimeout: 20000,
+  socketTimeout: 20000,
   greetingTimeout: 10000,
   pool: {
-    maxConnections: 5,
-    maxMessages: 100,
-    rateDelta: 1000,
-    rateLimit: 14,
+    maxConnections: 3,
+    maxMessages: 50,
+    rateDelta: 2000,
+    rateLimit: 7,
+  },
+  // Force IPv4 only (avoid IPv6 connectivity issues)
+  family: 4,
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4, all: false })
+      .then((result) => {
+        callback(null, result.address, result.family);
+      })
+      .catch((err) => {
+        callback(err);
+      });
   },
 });
 

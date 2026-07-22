@@ -288,21 +288,26 @@ const sendOrderEmail = async (order) => {
   };
 
   let lastError;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const info = await transporter.sendMail(mailOptions);
       console.log('Order notification email sent to', EMAIL_TO, 'messageId:', info.messageId);
       return;
     } catch (error) {
       lastError = error;
-      console.error(`Order email attempt ${attempt}/3 failed:`, error.message);
-      if (attempt < 3) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+      const isLastAttempt = attempt === 5;
+      console.error(
+        `Order email attempt ${attempt}/5 failed (${error.code || error.name}):`,
+        error.message
+      );
+      if (!isLastAttempt) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000);
+        console.log(`Retrying order email in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  console.error('Order email failed after 3 attempts:', lastError);
+  console.error('Order email failed after 5 attempts:', lastError.message);
 };
 
 module.exports = sendOrderEmail;

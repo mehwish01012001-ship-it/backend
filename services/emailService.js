@@ -12,7 +12,7 @@ const createMailOptions = (to, subject, html) => ({
   html,
 });
 
-const sendWithRetry = async (mailOptions, maxRetries = 3) => {
+const sendWithRetry = async (mailOptions, maxRetries = 5) => {
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -20,16 +20,20 @@ const sendWithRetry = async (mailOptions, maxRetries = 3) => {
       return;
     } catch (error) {
       lastError = error;
+      const isLastAttempt = attempt === maxRetries;
       console.error(
-        `Email send attempt ${attempt}/${maxRetries} failed:`,
+        `Email send attempt ${attempt}/${maxRetries} failed (${error.code || error.name}):`,
         error.message
       );
-      if (attempt < maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+      
+      if (!isLastAttempt) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000);
+        console.log(`Retrying in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
+  console.error(`Email delivery failed after ${maxRetries} attempts:`, lastError.message);
   throw lastError;
 };
 
