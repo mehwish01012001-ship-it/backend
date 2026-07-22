@@ -56,14 +56,14 @@ app.use(cookieParser());
 
 // Compression
 app.use(compression());
-
-// Logging
 app.use(morgan('combined'));
 
 // Serve static files
+
 app.use('/uploads', express.static('uploads'));
 
 // Routes
+app.use('/', sitemapRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -74,7 +74,7 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/compare', compareRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/hero-slider', heroSliderRoutes);
-app.use('/', sitemapRoutes);
+
 
 // Health check
 app.get('/api/health', (req, res) => {
