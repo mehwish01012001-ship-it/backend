@@ -1,14 +1,19 @@
 exports.corsOptions = {
   origin: (origin, callback) => {
+    const normalizeOrigin = (value) =>
+      String(value || '')
+        .trim()
+        .replace(/\/$/, '');
+
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       process.env.ADMIN_PANEL_URL,
       process.env.ADMIN_URL,
     ]
       .filter(Boolean)
-      .map((value) => String(value).trim());
+      .map(normalizeOrigin);
 
-    const normalizedOrigin = origin ? String(origin).trim() : undefined;
+    const normalizedOrigin = origin ? normalizeOrigin(origin) : undefined;
     const isLocalhost = normalizedOrigin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalizedOrigin);
     const isAllowedOrigin =
       !normalizedOrigin ||
