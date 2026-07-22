@@ -37,8 +37,12 @@ router.get('/sitemap.xml', async (req, res) => {
     const stream = new SitemapStream({ hostname: baseUrl });
     const xml = await streamToPromise(Readable.from(sitemapLinks).pipe(stream));
 
-    res.header('Content-Type', 'application/xml');
-    res.send(xml.toString());
+   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+res.setHeader('Cache-Control', 'no-cache');
+
+res.send(
+  '<?xml version="1.0" encoding="UTF-8"?>' + xml.toString()
+);
   } catch (error) {
     console.error('Sitemap generation failed:', error);
     res.status(500).send('Could not generate sitemap');
