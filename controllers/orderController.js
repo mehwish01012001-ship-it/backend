@@ -3,6 +3,7 @@ const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const { generateOrderNumber, calculatePagination } = require('../utils/helpers');
 const sendOrderEmail = require('../utils/sendOrderEmail');
+const { sendOrderConfirmationEmail } = require('../services/emailService');
 
 const normalizeAddress = (address) => {
   if (!address || typeof address !== 'object') return {};
@@ -124,6 +125,9 @@ exports.createOrder = async (req, res) => {
 
     try {
       await sendOrderEmail(order);
+      if (req.user?.email) {
+        await sendOrderConfirmationEmail(req.user.email, order.orderNumber, order.items, totalAmount);
+      }
     } catch (emailError) {
       console.error('Order email failed:', emailError);
     }
