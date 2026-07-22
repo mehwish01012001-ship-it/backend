@@ -13,5 +13,6 @@ router.get('/:id', protect, orderController.getOrderById);
 
 router.get('/', protect, authorize('admin'), orderController.getAllOrders);
 router.put('/:id/status', protect, authorize('admin'), updateOrderStatusValidator, handleValidationErrors, orderController.updateOrderStatus);
+router.delete('/:id', protect, authorize('admin'), orderController.deleteOrder);
 
 module.exports = router;
