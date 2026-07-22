@@ -42,8 +42,6 @@ setImmediate(() => {
     } else {
       console.log('✅ Email transporter verified and ready');
     }
-  }).catch((error) => {
-    console.error('⚠️  Email transporter verify error:', error.message);
   });
 });
 
