@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+// const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.gmail.com',
@@ -6,8 +6,16 @@ const transporter = nodemailer.createTransport({
   secure: process.env.EMAIL_SECURE === 'true',
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
+    pass: process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD,
   },
 });
 
-exports.transporter = transporter;
+transporter.verify((error) => {
+  if (error) {
+    console.error("SMTP ERROR:", error);
+  } else {
+    console.log("SMTP READY");
+  }
+});
+
+module.exports = { transporter };

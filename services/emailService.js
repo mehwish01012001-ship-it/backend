@@ -48,9 +48,10 @@ exports.sendWelcomeEmail = async (email, firstName) => {
 
   try {
     await transporter.sendMail(mailOptions);
-  } catch (error) {
-    console.error('Email send error:', error);
-  }
+  }catch (error) {
+ console.error('Email send error:', error);
+ throw error;
+}
 };
 
 exports.sendOrderConfirmationEmail = async (email, orderNumber, items, totalAmount) => {
@@ -68,9 +69,10 @@ exports.sendOrderConfirmationEmail = async (email, orderNumber, items, totalAmou
 
   try {
     await transporter.sendMail(mailOptions);
-  } catch (error) {
-    console.error('Email send error:', error);
-  }
+  }catch (error) {
+ console.error('Email send error:', error);
+ throw error;
+}
 };
 
 exports.sendPasswordResetEmail = async (email, resetLink) => {
