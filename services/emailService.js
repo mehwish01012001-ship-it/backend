@@ -5,7 +5,6 @@ const emailFrom =
   process.env.EMAIL_USER ||
   "no-reply@rqfashion.com";
 
-
 const createMailOptions = (to, subject, html) => ({
   from: emailFrom,
   to,
@@ -13,10 +12,29 @@ const createMailOptions = (to, subject, html) => ({
   html,
 });
 
+const sendWithRetry = async (mailOptions, maxRetries = 3) => {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await transporter.sendMail(mailOptions);
+      return;
+    } catch (error) {
+      lastError = error;
+      console.error(
+        `Email send attempt ${attempt}/${maxRetries} failed:`,
+        error.message
+      );
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw lastError;
+};
 
 // Welcome Email
 exports.sendWelcomeEmail = async (email, firstName) => {
-
   const mailOptions = createMailOptions(
     email,
     "Welcome to RQ Fashion",
@@ -27,21 +45,13 @@ exports.sendWelcomeEmail = async (email, firstName) => {
     `
   );
 
-
   try {
-
-    await transporter.sendMail(mailOptions);
-
-  } catch(error){
-
+    await sendWithRetry(mailOptions);
+  } catch (error) {
     console.error("Welcome email error:", error.message);
     throw error;
-
   }
-
 };
-
-
 
 // Order Confirmation Email
 exports.sendOrderConfirmationEmail = async (
@@ -50,14 +60,9 @@ exports.sendOrderConfirmationEmail = async (
   items,
   totalAmount
 ) => {
-
-
   const mailOptions = createMailOptions(
-
     email,
-
     `Order Confirmation - ${orderNumber}`,
-
     `
       <h1>Order Confirmed ✅</h1>
 
@@ -77,43 +82,24 @@ exports.sendOrderConfirmationEmail = async (
       You will receive shipping updates soon.
       </p>
     `
-
   );
 
-
   try {
-
-    await transporter.sendMail(mailOptions);
-
-
-  } catch(error){
-
-    console.error(
-      "Order confirmation email error:",
-      error.message
-    );
-
+    await sendWithRetry(mailOptions);
+  } catch (error) {
+    console.error("Order confirmation email error:", error.message);
     throw error;
-
   }
-
 };
-
-
 
 // Password Reset Email
 exports.sendPasswordResetEmail = async (
   email,
   resetLink
 ) => {
-
-
   const mailOptions = createMailOptions(
-
     email,
-
     "Password Reset Request",
-
     `
       <h1>Reset Your Password</h1>
 
@@ -129,26 +115,14 @@ exports.sendPasswordResetEmail = async (
       This link expires in 1 hour.
       </p>
     `
-
   );
 
-
   try {
-
-    await transporter.sendMail(mailOptions);
-
-  } catch(error){
-
-    console.error(
-      "Password reset email error:",
-      error.message
-    );
-
+    await sendWithRetry(mailOptions);
+  } catch (error) {
+    console.error("Password reset email error:", error.message);
   }
-
 };
-
-
 
 // Shipping Notification
 exports.sendShippingNotificationEmail = async (
@@ -156,14 +130,9 @@ exports.sendShippingNotificationEmail = async (
   orderNumber,
   trackingNumber
 ) => {
-
-
   const mailOptions = createMailOptions(
-
     email,
-
     `Your Order is Shipped - ${orderNumber}`,
-
     `
       <h1>Order Shipped 🚚</h1>
 
@@ -176,21 +145,11 @@ exports.sendShippingNotificationEmail = async (
       ${trackingNumber}
       </p>
     `
-
   );
 
-
   try {
-
-    await transporter.sendMail(mailOptions);
-
-  } catch(error){
-
-    console.error(
-      "Shipping email error:",
-      error.message
-    );
-
+    await sendWithRetry(mailOptions);
+  } catch (error) {
+    console.error("Shipping email error:", error.message);
   }
-
 };

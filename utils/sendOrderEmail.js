@@ -264,7 +264,6 @@ const sendOrderEmail = async (order) => {
 
   const plainOrder = order && typeof order.toObject === 'function' ? order.toObject() : order;
  
-
   const itemsWithNames = (plainOrder.items || []).map((item) => ({
   ...item,
   productName:
@@ -288,12 +287,22 @@ const sendOrderEmail = async (order) => {
     html,
   };
 
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Order notification email sent to', EMAIL_TO, 'messageId:', info.messageId);
-  } catch (error) {
-    console.error('Order email failed:', error);
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('Order notification email sent to', EMAIL_TO, 'messageId:', info.messageId);
+      return;
+    } catch (error) {
+      lastError = error;
+      console.error(`Order email attempt ${attempt}/3 failed:`, error.message);
+      if (attempt < 3) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
   }
+  console.error('Order email failed after 3 attempts:', lastError);
 };
 
 module.exports = sendOrderEmail;
