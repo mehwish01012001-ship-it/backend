@@ -1,5 +1,5 @@
 const HeroSliderSlide = require('../models/HeroSliderSlide');
-const { uploadImage, deleteImage } = require('../services/uploadService');
+const { uploadSingleImage, deleteImage } = require('../services/cloudinaryService');
 
 exports.getActiveSlides = async (req, res) => {
   try {
@@ -21,29 +21,38 @@ exports.getAllSlides = async (req, res) => {
 
 exports.createSlide = async (req, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
     let imageUrl = '';
+    let imagePublicId = '';
 
     console.log('📝 Hero slide form data received:', {
       body: req.body,
-      file: req.file ? { filename: req.file.filename, path: req.file.path } : null,
+      file: req.file ? { originalname: req.file.originalname } : null,
       isActive: req.body.isActive,
-      isActiveType: typeof req.body.isActive,
     });
 
     if (req.file) {
-      imageUrl = await uploadImage(req.file.path, 'heroslider', baseUrl);
+      try {
+        const uploadResult = await uploadSingleImage(req.file.buffer, 'hero-slider');
+        imageUrl = uploadResult.url;
+        imagePublicId = uploadResult.publicId;
+      } catch (uploadError) {
+        console.error('❌ Failed to upload hero slide image:', uploadError.message);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Failed to upload image: ${uploadError.message}` 
+        });
+      }
     }
 
-    const mediaType = req.file && req.file.mimetype && req.file.mimetype.startsWith('video/') ? 'video' : 'image';
+    const mediaType = 'image';
 
     const slide = await HeroSliderSlide.create({
       tag: req.body.tag || '',
       title: req.body.title || '',
       highlight: req.body.highlight || '',
       description: req.body.description || '',
-   
       image: imageUrl,
+      imagePublicId,
       mediaType,
       isActive: req.body.isActive === 'true' || req.body.isActive === true,
       order: req.body.order ? Number(req.body.order) : 0,
@@ -67,8 +76,6 @@ exports.updateSlide = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Slide not found' });
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
     if (req.body.tag !== undefined) slide.tag = req.body.tag;
     if (req.body.title !== undefined) slide.title = req.body.title;
     if (req.body.highlight !== undefined) slide.highlight = req.body.highlight;
@@ -78,12 +85,26 @@ exports.updateSlide = async (req, res) => {
     if (req.body.isActive !== undefined) slide.isActive = req.body.isActive === 'true' || req.body.isActive === true;
     if (req.body.order !== undefined) slide.order = Number(req.body.order);
 
+    // Handle image update
     if (req.file) {
-      if (slide.image) {
-        await deleteImage(slide.image);
+      try {
+        // Delete old image from Cloudinary if it exists
+        if (slide.imagePublicId) {
+          await deleteImage(slide.imagePublicId);
+        }
+        
+        // Upload new image
+        const uploadResult = await uploadSingleImage(req.file.buffer, 'hero-slider');
+        slide.image = uploadResult.url;
+        slide.imagePublicId = uploadResult.publicId;
+        slide.mediaType = 'image';
+      } catch (uploadError) {
+        console.error('❌ Failed to upload hero slide image:', uploadError.message);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Failed to upload image: ${uploadError.message}` 
+        });
       }
-      slide.image = await uploadImage(req.file.path, 'heroslider', baseUrl);
-      slide.mediaType = req.file.mimetype && req.file.mimetype.startsWith('video/') ? 'video' : 'image';
     }
 
     await slide.save();
@@ -105,13 +126,18 @@ exports.deleteSlide = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Slide not found' });
     }
 
-    if (slide.image) {
-      await deleteImage(slide.image);
+    // Delete image from Cloudinary if it exists
+    if (slide.imagePublicId) {
+      try {
+        await deleteImage(slide.imagePublicId);
+      } catch (error) {
+        console.warn('⚠️ Failed to delete slide image from Cloudinary:', error.message);
+      }
     }
 
     res.status(200).json({ success: true, message: 'Hero slide deleted' });
   } catch (error) {
-    console.error('Hero slider delete error:', error);
+    console.error('❌ Hero slider delete error:', error);
     res.status(500).json({ success: false, message: error.message || 'Failed to delete hero slide' });
   }
 };

@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  avatarPublicId: {
+    type: String,
+    default: null, // Cloudinary public ID for deletion
+  },
   role: {
     type: String,
     enum: ['user', 'admin'],

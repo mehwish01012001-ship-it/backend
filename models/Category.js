@@ -13,6 +13,7 @@ const categorySchema = new mongoose.Schema({
   },
   description: String,
   image: String,
+  imagePublicId: String, // Cloudinary public ID for deletion
   season: {
     type: String,
     enum: ['summer', 'winter'],
@@ -20,6 +21,7 @@ const categorySchema = new mongoose.Schema({
   sizes: [String],
   subcategoryNames: [String],
   icon: String,
+  iconPublicId: String, // Cloudinary public ID for icon deletion
   parentCategory: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',

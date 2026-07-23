@@ -49,6 +49,12 @@ const heroSliderSlideSchema = new mongoose.Schema(
       default: "",
     },
 
+    imagePublicId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     mediaType: {
       type: String,
       enum: ["image", "video"],

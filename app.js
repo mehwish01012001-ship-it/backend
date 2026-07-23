@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
 const errorHandler = require('./middleware/errorHandler');
+const { validateCloudinaryConfig } = require('./services/cloudinaryService');
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -20,6 +21,11 @@ const heroSliderRoutes = require('./routes/heroSliderRoutes');
 const sitemapRoutes = require('./routes/sitemap');
 
 const app = express();
+
+// Validate Cloudinary configuration on startup
+if (!validateCloudinaryConfig()) {
+  console.error('⚠️ WARNING: Cloudinary is not properly configured. Image uploads will fail.');
+}
 
 // When deployed behind proxy hosts (Railway, Vercel, etc.), trust X-Forwarded-* headers
 app.set('trust proxy', 1);
@@ -58,9 +64,8 @@ app.use(cookieParser());
 app.use(compression());
 app.use(morgan('combined'));
 
-// Serve static files
-
-app.use('/uploads', express.static('uploads'));
+// NOTE: Static uploads are no longer needed - all images are served from Cloudinary
+// app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/', sitemapRoutes);

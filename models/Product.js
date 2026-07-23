@@ -54,6 +54,7 @@ const productSchema = new mongoose.Schema({
   images: [
     {
       url: String,
+      publicId: String, // Cloudinary public ID for deletion
       alt: String,
     },
   ],

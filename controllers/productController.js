@@ -1,7 +1,7 @@
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const { slugify, calculatePagination } = require('../utils/helpers');
-const { uploadMultipleImages, deleteImage } = require('../services/uploadService');
+const { uploadSingleImage, uploadMultipleImages, deleteImage, deleteMultipleImages } = require('../services/cloudinaryService');
 
 const parseArrayField = (value) => {
   if (Array.isArray(value)) return value;
@@ -92,12 +92,26 @@ exports.createProduct = async (req, res) => {
     const imageUrls = [];
     
     if (req.files && req.files.length > 0) {
-      console.log('🖼️ Processing images:', req.files.map(f => f.filename));
-      const filePaths = req.files.map((file) => file.path);
-      // Use relative URLs only - no baseUrl
-      const urls = await uploadMultipleImages(filePaths, 'products');
-      console.log('✅ Image URLs generated:', urls);
-      imageUrls.push(...urls.map((url) => ({ url, alt: '' })));
+      console.log('🖼️ Processing images:', req.files.length, 'file(s)');
+      try {
+        // Upload images to Cloudinary
+        const uploadedImages = await uploadMultipleImages(
+          req.files.map(f => f.buffer),
+          'products'
+        );
+        console.log('✅ Images uploaded to Cloudinary:', uploadedImages.length);
+        imageUrls.push(...uploadedImages.map((img) => ({ 
+          url: img.url, 
+          publicId: img.publicId,
+          alt: '' 
+        })));
+      } catch (uploadError) {
+        console.error('❌ Image upload failed:', uploadError.message);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Failed to upload images: ${uploadError.message}` 
+        });
+      }
     } else {
       console.log('⚠️ No images received with product creation');
     }
@@ -130,7 +144,6 @@ exports.createProduct = async (req, res) => {
     });
 
     console.log('✅ Product created successfully:', product._id);
-    console.log('📷 Product images:', product.images);
 
     res.status(201).json({ success: true, message: 'Product created successfully', product: serializeProduct(product) });
   } catch (error) {
@@ -277,23 +290,47 @@ exports.updateProduct = async (req, res) => {
     if (launchDate !== undefined) product.launchDate = launchDate ? new Date(launchDate) : null;
     if (productLink !== undefined) product.productLink = productLink;
 
-    // handle new uploads - use relative URLs
+    // Handle new image uploads
     if (req.files && req.files.length > 0) {
-      const filePaths = req.files.map((file) => file.path);
-      const urls = await uploadMultipleImages(filePaths, 'products');
-      product.images.push(...urls.map((url) => ({ url, alt: '' })));
+      try {
+        const uploadedImages = await uploadMultipleImages(
+          req.files.map(f => f.buffer),
+          'products'
+        );
+        product.images.push(...uploadedImages.map((img) => ({ 
+          url: img.url,
+          publicId: img.publicId,
+          alt: '' 
+        })));
+      } catch (uploadError) {
+        console.error('❌ Failed to upload new images:', uploadError.message);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Failed to upload images: ${uploadError.message}` 
+        });
+      }
     }
 
-    // allow client to pass an array of image URLs to keep (existingImages)
-    // any existing product.images not included in existingImages will be removed
+    // Handle image deletion - keep only images in existingImages array
     if (req.body.existingImages) {
       try {
-        const keep = Array.isArray(req.body.existingImages) ? req.body.existingImages : JSON.parse(req.body.existingImages);
+        const keep = Array.isArray(req.body.existingImages) 
+          ? req.body.existingImages 
+          : JSON.parse(req.body.existingImages);
+        
         const toRemove = product.images.filter((img) => !keep.includes(img.url));
-        // delete removed images from local storage
-        for (const img of toRemove) {
-          await deleteImage(img.url);
+        
+        // Delete removed images from Cloudinary
+        if (toRemove.length > 0) {
+          const publicIdsToDelete = toRemove
+            .filter(img => img.publicId)
+            .map(img => img.publicId);
+          
+          if (publicIdsToDelete.length > 0) {
+            await deleteMultipleImages(publicIdsToDelete);
+          }
         }
+        
         product.images = product.images.filter((img) => keep.includes(img.url));
       } catch (e) {
         console.warn('Could not parse existingImages', e.message || e);
@@ -317,9 +354,19 @@ exports.deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
+    // Delete all product images from Cloudinary
     if (product.images && product.images.length > 0) {
-      for (const image of product.images) {
-        await deleteImage(image.url);
+      const publicIds = product.images
+        .filter(img => img.publicId)
+        .map(img => img.publicId);
+      
+      if (publicIds.length > 0) {
+        try {
+          await deleteMultipleImages(publicIds);
+        } catch (error) {
+          console.error('⚠️ Failed to delete some images from Cloudinary:', error.message);
+          // Continue with deletion even if image deletion fails
+        }
       }
     }
 

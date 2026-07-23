@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const User = require('../models/User');
-const { uploadImage } = require('../services/uploadService');
+const { uploadSingleImage, deleteImage } = require('../services/cloudinaryService');
 const { generateToken } = require('../utils/helpers');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../services/emailService');
 
@@ -119,16 +119,37 @@ exports.updateAvatar = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Avatar image is required' });
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const avatarUrl = await uploadImage(req.file.path, 'users', baseUrl);
+    try {
+      const uploadResult = await uploadSingleImage(req.file.buffer, 'users');
+      
+      // Get the user to delete old avatar if it exists
+      const user = await User.findById(req.user._id);
+      if (user && user.avatarPublicId) {
+        try {
+          await deleteImage(user.avatarPublicId);
+        } catch (deleteError) {
+          console.warn('⚠️ Failed to delete old avatar:', deleteError.message);
+        }
+      }
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { avatar: avatarUrl, updatedAt: Date.now() },
-      { new: true, runValidators: true }
-    ).select('-password');
+      const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        { 
+          avatar: uploadResult.url, 
+          avatarPublicId: uploadResult.publicId,
+          updatedAt: Date.now() 
+        },
+        { new: true, runValidators: true }
+      ).select('-password');
 
-    res.status(200).json({ success: true, message: 'Avatar updated successfully', user });
+      res.status(200).json({ success: true, message: 'Avatar updated successfully', user: updatedUser });
+    } catch (uploadError) {
+      console.error('❌ Failed to upload avatar:', uploadError.message);
+      return res.status(400).json({ 
+        success: false, 
+        message: `Failed to upload avatar: ${uploadError.message}` 
+      });
+    }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

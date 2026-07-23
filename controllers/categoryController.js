@@ -1,6 +1,6 @@
 const Category = require('../models/Category');
 const { slugify } = require('../utils/helpers');
-const { uploadImage, deleteImage } = require('../services/uploadService');
+const { uploadSingleImage, deleteImage } = require('../services/cloudinaryService');
 
 exports.createCategory = async (req, res) => {
   try {
@@ -32,11 +32,21 @@ exports.createCategory = async (req, res) => {
       slugValue = `${slugValue}-${Date.now()}`;
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
     let imageUrl = null;
+    let imagePublicId = null;
+    
     if (req.file) {
-      imageUrl = await uploadImage(req.file.path, 'categories', baseUrl);
+      try {
+        const uploadResult = await uploadSingleImage(req.file.buffer, 'categories');
+        imageUrl = uploadResult.url;
+        imagePublicId = uploadResult.publicId;
+      } catch (uploadError) {
+        console.error('❌ Failed to upload category image:', uploadError.message);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Failed to upload image: ${uploadError.message}` 
+        });
+      }
     }
 
     const category = await Category.create({
@@ -44,6 +54,7 @@ exports.createCategory = async (req, res) => {
       slug: slugValue,
       description,
       image: imageUrl,
+      imagePublicId,
       season,
       sizes,
       subcategoryNames,
@@ -152,12 +163,25 @@ exports.updateCategory = async (req, res) => {
     if (displayOrder !== undefined) category.displayOrder = displayOrder;
     if (isActive !== undefined) category.isActive = isActive;
 
+    // Handle image update
     if (req.file) {
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      if (category.image) {
-        await deleteImage(category.image);
+      try {
+        // Delete old image from Cloudinary if it exists
+        if (category.imagePublicId) {
+          await deleteImage(category.imagePublicId);
+        }
+        
+        // Upload new image
+        const uploadResult = await uploadSingleImage(req.file.buffer, 'categories');
+        category.image = uploadResult.url;
+        category.imagePublicId = uploadResult.publicId;
+      } catch (uploadError) {
+        console.error('❌ Failed to upload category image:', uploadError.message);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Failed to upload image: ${uploadError.message}` 
+        });
       }
-      category.image = await uploadImage(req.file.path, 'categories', baseUrl);
     }
 
     category.updatedAt = Date.now();
@@ -177,8 +201,13 @@ exports.deleteCategory = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Category not found' });
     }
 
-    if (category.image) {
-      await deleteImage(category.image);
+    // Delete image from Cloudinary if it exists
+    if (category.imagePublicId) {
+      try {
+        await deleteImage(category.imagePublicId);
+      } catch (error) {
+        console.warn('⚠️ Failed to delete category image from Cloudinary:', error.message);
+      }
     }
 
     res.status(200).json({ success: true, message: 'Category deleted successfully' });
