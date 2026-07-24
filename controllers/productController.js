@@ -155,7 +155,7 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 12, category, season, search, sortBy = '-createdAt', includeInactive } = req.query;
+    const { page = 1, limit = 12, category, season, search, sortBy = '-createdAt', includeInactive, minPrice, maxPrice } = req.query;
     const { skip } = calculatePagination(page, limit);
 
     const includeInactiveProducts = includeInactive === 'true' || includeInactive === true || includeInactive === 1;
@@ -181,6 +181,17 @@ exports.getAllProducts = async (req, res) => {
       } else {
         query.category = { $in: [] };
       }
+    }
+
+    const min = Number(minPrice);
+    const max = Number(maxPrice);
+
+    if (!Number.isNaN(min) && min >= 0) {
+      query.price = { ...(query.price || {}), $gte: min };
+    }
+
+    if (!Number.isNaN(max) && max >= 0) {
+      query.price = { ...(query.price || {}), $lte: max };
     }
 
     // text search
