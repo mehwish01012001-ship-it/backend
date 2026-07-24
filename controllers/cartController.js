@@ -17,7 +17,7 @@ exports.getCart = async (req, res) => {
 
 exports.addToCart = async (req, res) => {
   try {
-    const { productId, quantity, size, color } = req.body;
+    const { productId, quantity, size, color, note } = req.body;
 
     const product = await Product.findById(productId);
     if (!product) {
@@ -49,6 +49,7 @@ exports.addToCart = async (req, res) => {
         price: product.price,
         size,
         color,
+        note,
       });
     }
 

@@ -22,6 +22,7 @@ const cartSchema = new mongoose.Schema({
       price: Number,
       size: String,
       color: String,
+      note: String,
     },
   ],
   subtotal: {

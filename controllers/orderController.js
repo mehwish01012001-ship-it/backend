@@ -62,6 +62,7 @@ exports.createOrder = async (req, res) => {
           ...item,
           product: productId,
           quantity: Number(item.quantity) || 0,
+          note: item.note || '',
         };
       });
     }
@@ -156,6 +157,7 @@ exports.createOrder = async (req, res) => {
         price: product.price,
         size: item.size || '',
         color: item.color || '',
+        note: item.note || '',
       });
     }
 
@@ -172,6 +174,7 @@ exports.createOrder = async (req, res) => {
 
     const orderNumber = generateOrderNumber();
     const paymentReceipt = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const orderNotes = [notes, ...orderItems.filter((item) => item.note?.trim()).map((item) => `Product Note (${item.productName || 'Item'}): ${item.note.trim()}`)].filter(Boolean).join('\n\n');
 
     const order = await Order.create({
       orderNumber,
@@ -183,7 +186,7 @@ exports.createOrder = async (req, res) => {
       paymentMethod,
       paymentNumber,
       paymentReceipt,
-      notes,
+      notes: orderNotes || notes,
       ...(coupon ? { coupon } : {}),
     });
 
