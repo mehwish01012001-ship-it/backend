@@ -167,7 +167,25 @@ exports.getAllProducts = async (req, res) => {
 
     // if explicit category id passed, filter by it
     if (category) {
-      query.category = category;
+      // support values like "<categoryId>-<subcategory-slug>" coming from frontend
+      if (typeof category === 'string' && category.includes('-')) {
+        const dashIndex = category.indexOf('-');
+        const possibleId = category.substring(0, dashIndex);
+        const rest = category.substring(dashIndex + 1);
+        // validate ObjectId length (24 hex chars) before casting
+        if (/^[0-9a-fA-F]{24}$/.test(possibleId)) {
+          query.category = possibleId;
+          if (rest) {
+            // match subcategory loosely (slug or label)
+            query.subcategory = { $regex: rest.replace(/[-_]+/g, " "), $options: 'i' };
+          }
+        } else {
+          // fallback: treat whole value as category slug/name
+          query.category = category;
+        }
+      } else {
+        query.category = category;
+      }
     }
 
     // if season selected, restrict to categories for that season
@@ -185,6 +203,13 @@ exports.getAllProducts = async (req, res) => {
 
     const min = Number(minPrice);
     const max = Number(maxPrice);
+    // size filter: match when product.sizes contains the requested size
+    if (req.query.size) {
+      const sizeVal = String(req.query.size).trim();
+      if (sizeVal) {
+        query.sizes = { $in: [sizeVal] };
+      }
+    }
 
     if (!Number.isNaN(min) && min >= 0) {
       query.price = { ...(query.price || {}), $gte: min };
