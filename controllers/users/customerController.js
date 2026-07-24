@@ -20,3 +20,17 @@ exports.getCustomerById = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.deleteCustomer = async (req, res) => {
+  try {
+    const deletedCustomer = await User.findByIdAndDelete(req.params.id);
+
+    if (!deletedCustomer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'Customer deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
