@@ -18,6 +18,7 @@ const couponRoutes = require('./routes/couponRoutes');
 const compareRoutes = require('./routes/compareRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const heroSliderRoutes = require('./routes/heroSliderRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 const sitemapRoutes = require('./routes/sitemap');
 
 const app = express();
@@ -74,6 +75,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/contact', contactRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/compare', compareRoutes);
