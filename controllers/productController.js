@@ -41,6 +41,8 @@ const parseColorField = (value) => {
 
 const normalizeBoolean = (value) => value === 'true' || value === true;
 
+const escapeRegExp = (string) => String(string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const serializeProduct = (product) => {
   if (!product) return product;
 
@@ -207,7 +209,9 @@ exports.getAllProducts = async (req, res) => {
     if (req.query.size) {
       const sizeVal = String(req.query.size).trim();
       if (sizeVal) {
-        query.sizes = { $in: [sizeVal] };
+        query.sizes = {
+          $in: [sizeVal],
+        };
       }
     }
 
