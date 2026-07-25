@@ -74,6 +74,9 @@ exports.createProduct = async (req, res) => {
       isFeatured,
       isFlash,
       isNew,
+      isBestSeller,
+      isTrending,
+      isLimitedAddition,
       isActive,
       launchDate,
       productLink,
@@ -134,6 +137,9 @@ exports.createProduct = async (req, res) => {
       brand,
       isFlashSale: normalizeBoolean(isFlash),
       isNewArrival: normalizeBoolean(isNew),
+      isBestSeller: normalizeBoolean(isBestSeller),
+      isTrending: normalizeBoolean(isTrending),
+      isLimitedAddition: normalizeBoolean(isLimitedAddition),
       tags: parseArrayField(tags),
       isFeatured: normalizeBoolean(isFeatured),
       isActive: normalizeBoolean(isActive),
@@ -296,6 +302,9 @@ exports.updateProduct = async (req, res) => {
       colors,
       isFlash,
       isNew,
+      isBestSeller,
+      isTrending,
+      isLimitedAddition,
       material,
       brand,
       tags,
@@ -321,6 +330,9 @@ exports.updateProduct = async (req, res) => {
     if (sizes) product.sizes = parseArrayField(sizes);
     if (isFlash !== undefined) product.isFlashSale = normalizeBoolean(isFlash);
     if (isNew !== undefined) product.isNewArrival = normalizeBoolean(isNew);
+    if (isBestSeller !== undefined) product.isBestSeller = normalizeBoolean(isBestSeller);
+    if (isTrending !== undefined) product.isTrending = normalizeBoolean(isTrending);
+    if (isLimitedAddition !== undefined) product.isLimitedAddition = normalizeBoolean(isLimitedAddition);
     if (colors) product.colors = parseColorField(colors);
     if (material) product.material = material;
     if (brand) product.brand = brand;

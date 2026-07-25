@@ -86,6 +86,18 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  isBestSeller: {
+    type: Boolean,
+    default: false,
+  },
+  isTrending: {
+    type: Boolean,
+    default: false,
+  },
+  isLimitedAddition: {
+    type: Boolean,
+    default: false,
+  },
   launchDate: {
     type: Date,
     default: null,
