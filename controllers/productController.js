@@ -41,6 +41,41 @@ const parseColorField = (value) => {
 
 const normalizeBoolean = (value) => value === 'true' || value === true;
 
+const getCollectionTypeFlags = (productType, fallbackFlags = {}) => {
+  const normalizedType = String(productType ?? '').trim().toLowerCase();
+
+  if (!normalizedType) {
+    return {
+      isFlashSale: normalizeBoolean(fallbackFlags.isFlashSale),
+      isNewArrival: normalizeBoolean(fallbackFlags.isNewArrival),
+      isBestSeller: normalizeBoolean(fallbackFlags.isBestSeller),
+      isTrending: normalizeBoolean(fallbackFlags.isTrending),
+    };
+  }
+
+  const typeMap = {
+    'flash-sale': { isFlashSale: true },
+    flash: { isFlashSale: true },
+    'new-arrival': { isNewArrival: true },
+    new: { isNewArrival: true },
+    'trending-products': { isTrending: true },
+    trending: { isTrending: true },
+    'best-seller': { isBestSeller: true },
+    best: { isBestSeller: true },
+    'best-sellers': { isBestSeller: true },
+  };
+
+  const selectedFlags = typeMap[normalizedType] || {};
+
+  return {
+    isFlashSale: false,
+    isNewArrival: false,
+    isBestSeller: false,
+    isTrending: false,
+    ...selectedFlags,
+  };
+};
+
 const escapeRegExp = (string) => String(string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const serializeProduct = (product) => {
@@ -83,9 +118,17 @@ exports.createProduct = async (req, res) => {
       seoTitle,
       seoDescription,
       seoKeywords,
+      productType,
     } = req.body;
 
-    console.log('📦 Creating product:', { name, sku, price });
+    const collectionFlags = getCollectionTypeFlags(productType, {
+      isFlashSale: isFlash,
+      isNewArrival: isNew,
+      isBestSeller,
+      isTrending,
+    });
+
+    console.log('📦 Creating product:', { name, sku, price, productType });
     console.log('📤 Files received:', req.files?.length || 0, 'file(s)');
 
     let product = await Product.findOne({ sku });
@@ -135,10 +178,10 @@ exports.createProduct = async (req, res) => {
       sizes: parseArrayField(sizes),
       material,
       brand,
-      isFlashSale: normalizeBoolean(isFlash),
-      isNewArrival: normalizeBoolean(isNew),
-      isBestSeller: normalizeBoolean(isBestSeller),
-      isTrending: normalizeBoolean(isTrending),
+      isFlashSale: collectionFlags.isFlashSale,
+      isNewArrival: collectionFlags.isNewArrival,
+      isBestSeller: collectionFlags.isBestSeller,
+      isTrending: collectionFlags.isTrending,
       isLimitedAddition: normalizeBoolean(isLimitedAddition),
       tags: parseArrayField(tags),
       isFeatured: normalizeBoolean(isFeatured),
@@ -312,12 +355,20 @@ exports.updateProduct = async (req, res) => {
       isActive,
       launchDate,
       productLink,
+      productType,
     } = req.body;
 
     let product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
+
+    const collectionFlags = getCollectionTypeFlags(productType, {
+      isFlashSale: isFlash,
+      isNewArrival: isNew,
+      isBestSeller,
+      isTrending,
+    });
 
     if (name) product.name = name;
     if (description) product.description = description;
@@ -328,10 +379,12 @@ exports.updateProduct = async (req, res) => {
     if (sku) product.sku = sku;
     if (stock !== undefined) product.stock = stock;
     if (sizes) product.sizes = parseArrayField(sizes);
-    if (isFlash !== undefined) product.isFlashSale = normalizeBoolean(isFlash);
-    if (isNew !== undefined) product.isNewArrival = normalizeBoolean(isNew);
-    if (isBestSeller !== undefined) product.isBestSeller = normalizeBoolean(isBestSeller);
-    if (isTrending !== undefined) product.isTrending = normalizeBoolean(isTrending);
+    if (productType !== undefined || isFlash !== undefined || isNew !== undefined || isBestSeller !== undefined || isTrending !== undefined) {
+      product.isFlashSale = collectionFlags.isFlashSale;
+      product.isNewArrival = collectionFlags.isNewArrival;
+      product.isBestSeller = collectionFlags.isBestSeller;
+      product.isTrending = collectionFlags.isTrending;
+    }
     if (isLimitedAddition !== undefined) product.isLimitedAddition = normalizeBoolean(isLimitedAddition);
     if (colors) product.colors = parseColorField(colors);
     if (material) product.material = material;
@@ -430,10 +483,65 @@ exports.deleteProduct = async (req, res) => {
 
 exports.getFeaturedProducts = async (req, res) => {
   try {
+    // Check database connection
+    if (Product && Product.db && Product.db.readyState !== 1) {
+      console.warn('⚠️ Database not connected for featured products query');
+      return res.status(200).json({ success: true, products: [] });
+    }
+
     const products = await Product.find({ isFeatured: true, isActive: true }).limit(8).populate('category');
     res.status(200).json({ success: true, products: products.map(serializeProduct) });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Error fetching featured products:', error.message);
+    console.error('📋 Stack:', error.stack);
+    // Return empty array instead of 500 error for graceful degradation
+    res.status(200).json({ success: true, products: [] });
+  }
+};
+
+exports.getFlashSaleProducts = async (req, res) => {
+  try {
+    // Check database connection
+    if (Product && Product.db && Product.db.readyState !== 1) {
+      console.warn('⚠️ Database not connected for flash-sale query');
+      return res.status(200).json({ success: true, products: [] });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit) || 10, 24);
+    const products = await Product.find({ isFlashSale: true, isActive: true })
+      .sort('-createdAt')
+      .limit(limit)
+      .populate('category');
+
+    res.status(200).json({ success: true, products: products.map(serializeProduct) });
+  } catch (error) {
+    console.error('❌ Error fetching flash-sale products:', error.message);
+    console.error('📋 Stack:', error.stack);
+    // Return empty array instead of 500 error for graceful degradation
+    res.status(200).json({ success: true, products: [] });
+  }
+};
+
+exports.getBestSellerProducts = async (req, res) => {
+  try {
+    // Check database connection
+    if (Product && Product.db && Product.db.readyState !== 1) {
+      console.warn('⚠️ Database not connected for best-sellers query');
+      return res.status(200).json({ success: true, products: [] });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit) || 8, 24);
+    const products = await Product.find({ isBestSeller: true, isActive: true })
+      .sort('-createdAt')
+      .limit(limit)
+      .populate('category');
+
+    res.status(200).json({ success: true, products: products.map(serializeProduct) });
+  } catch (error) {
+    console.error('❌ Error fetching best-seller products:', error.message);
+    console.error('📋 Stack:', error.stack);
+    // Return empty array instead of 500 error for graceful degradation
+    res.status(200).json({ success: true, products: [] });
   }
 };
 
@@ -443,12 +551,13 @@ exports.getTrendingProducts = async (req, res) => {
       return res.status(200).json({ success: true, products: [] });
     }
 
+    const limit = Math.min(parseInt(req.query.limit) || 12, 24);
     const products = await Product.find({
       isTrending: true,
       isActive: true,
     })
       .sort('-createdAt')
-      .limit(12)
+      .limit(limit)
       .populate('category');
 
     res.status(200).json({ success: true, products: products.map(serializeProduct) });
@@ -460,15 +569,25 @@ exports.getTrendingProducts = async (req, res) => {
 
 exports.getNewArrivals = async (req, res) => {
   try {
+    // Check database connection
+    if (Product && Product.db && Product.db.readyState !== 1) {
+      console.warn('⚠️ Database not connected for new-arrivals query');
+      return res.status(200).json({ success: true, products: [] });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit) || 12, 24);
     const products = await Product.find({
       $or: [{ isNewArrival: true }, { isNew: true }],
       isActive: true,
     })
       .sort('-createdAt')
-      .limit(12)
+      .limit(limit)
       .populate('category');
     res.status(200).json({ success: true, products: products.map(serializeProduct) });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Error fetching new-arrival products:', error.message);
+    console.error('📋 Stack:', error.stack);
+    // Return empty array instead of 500 error for graceful degradation
+    res.status(200).json({ success: true, products: [] });
   }
 };

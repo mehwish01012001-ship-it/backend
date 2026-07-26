@@ -7,6 +7,8 @@ const handleValidationErrors = require('../middleware/validation');
 const { createProductValidator } = require('../validators/productValidator');
 
 router.get('/featured', productController.getFeaturedProducts);
+router.get('/flash-sale', productController.getFlashSaleProducts);
+router.get('/best-sellers', productController.getBestSellerProducts);
 router.get('/trending', productController.getTrendingProducts);
 router.get('/new-arrivals', productController.getNewArrivals);
 router.get('/', productController.getAllProducts);
