@@ -437,6 +437,27 @@ exports.getFeaturedProducts = async (req, res) => {
   }
 };
 
+exports.getTrendingProducts = async (req, res) => {
+  try {
+    if (Product && Product.db && Product.db.readyState !== 1) {
+      return res.status(200).json({ success: true, products: [] });
+    }
+
+    const products = await Product.find({
+      isTrending: true,
+      isActive: true,
+    })
+      .sort('-createdAt')
+      .limit(12)
+      .populate('category');
+
+    res.status(200).json({ success: true, products: products.map(serializeProduct) });
+  } catch (error) {
+    console.warn('⚠️ Trending products query failed:', error.message);
+    res.status(200).json({ success: true, products: [] });
+  }
+};
+
 exports.getNewArrivals = async (req, res) => {
   try {
     const products = await Product.find({
