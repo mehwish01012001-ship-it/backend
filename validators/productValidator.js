@@ -8,6 +8,7 @@ exports.createProductValidator = [
   body('sku').trim().notEmpty().withMessage('SKU is required'),
   body('stock').isInt({ min: 0 }).withMessage('Valid stock quantity is required'),
   body('subcategory').optional().trim(),
+  body('videoUrl').optional({ checkFalsy: true }).trim().isURL().withMessage('Video URL must be a valid URL'),
 ];
 
 exports.updateProductValidator = [
@@ -15,4 +16,5 @@ exports.updateProductValidator = [
   body('price').optional().isFloat({ min: 0 }),
   body('stock').optional().isInt({ min: 0 }),
   body('subcategory').optional().trim(),
+  body('videoUrl').optional({ checkFalsy: true }).trim().isURL().withMessage('Video URL must be a valid URL'),
 ];

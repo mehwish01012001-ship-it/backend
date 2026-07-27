@@ -9,6 +9,9 @@ const { isAllowedFormat } = require('../config/cloudinary');
 // Use memory storage - files are held in memory before being streamed to Cloudinary
 const storage = multer.memoryStorage();
 
+const VIDEO_MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const IMAGE_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 /**
  * File filter to validate uploaded files
  * @param {object} req - Express request object
@@ -16,14 +19,15 @@ const storage = multer.memoryStorage();
  * @param {function} cb - Callback function
  */
 const fileFilter = (req, file, cb) => {
-  // Check if file type is allowed
   if (!isAllowedFormat(file.mimetype)) {
-    return cb(new Error(`Invalid file type. Only image files are allowed. Received: ${file.mimetype}`));
+    return cb(new Error(`Invalid file type. Only image and video files are allowed. Received: ${file.mimetype}`));
   }
 
-  // Check file size (10MB limit per file)
-  if (file.size > 10 * 1024 * 1024) {
-    return cb(new Error('File size exceeds 10MB limit'));
+  const isVideo = file.mimetype.startsWith('video/');
+  const maxSize = isVideo ? VIDEO_MAX_FILE_SIZE : IMAGE_MAX_FILE_SIZE;
+
+  if (file.size > maxSize) {
+    return cb(new Error(`File size exceeds ${isVideo ? '100MB' : '10MB'} limit`));
   }
 
   cb(null, true);
@@ -36,7 +40,7 @@ const uploadMiddleware = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB per file
+    fileSize: VIDEO_MAX_FILE_SIZE,
     files: 10, // Maximum 10 files per request
   },
 });

@@ -58,6 +58,28 @@ const productSchema = new mongoose.Schema({
       alt: String,
     },
   ],
+  media: [
+    {
+      url: String,
+      publicId: String,
+      alt: String,
+      type: {
+        type: String,
+        enum: ['image', 'video'],
+        default: 'video',
+      },
+      source: {
+        type: String,
+        enum: ['cloudinary', 'external'],
+        default: 'external',
+      },
+    },
+  ],
+  videoUrl: {
+    type: String,
+    trim: true,
+    default: '',
+  },
   sizes: [String],
   colors: [
     {

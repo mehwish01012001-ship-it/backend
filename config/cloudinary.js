@@ -67,7 +67,22 @@ const CLOUDINARY_FOLDERS = {
  */
 const ALLOWED_FORMATS = {
   images: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg'],
-  mimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml'],
+  videos: ['mp4', 'webm', 'mov', 'ogg', 'avi', 'm4v', 'flv'],
+  mimeTypes: [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/avif',
+    'image/svg+xml',
+    'video/mp4',
+    'video/webm',
+    'video/ogg',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/x-m4v',
+    'video/x-flv',
+  ],
 };
 
 /**

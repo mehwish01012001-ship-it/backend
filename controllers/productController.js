@@ -41,6 +41,16 @@ const parseColorField = (value) => {
 
 const normalizeBoolean = (value) => value === 'true' || value === true;
 
+const isVideoMimeType = (mimeType) => typeof mimeType === 'string' && mimeType.startsWith('video/');
+
+const createMediaEntry = ({ url, publicId = '', alt = '', type = 'video', source = 'external' }) => ({
+  url,
+  publicId,
+  alt,
+  type,
+  source,
+});
+
 const getCollectionTypeFlags = (productType, fallbackFlags = {}) => {
   const normalizedType = String(productType ?? '').trim().toLowerCase();
 
@@ -138,30 +148,76 @@ exports.createProduct = async (req, res) => {
     }
 
     const imageUrls = [];
-    
-    if (req.files && req.files.length > 0) {
-      console.log('🖼️ Processing images:', req.files.length, 'file(s)');
+    const mediaItems = [];
+    const externalVideoUrl = String(req.body.videoUrl || '').trim();
+
+    if (req.files && Array.isArray(req.files.images) && req.files.images.length > 0) {
+      console.log('🖼️ Processing images:', req.files.images.length, 'file(s)');
       try {
-        // Upload images to Cloudinary
         const uploadedImages = await uploadMultipleImages(
-          req.files.map(f => f.buffer),
+          req.files.images.map((f) => f.buffer),
           'products'
         );
         console.log('✅ Images uploaded to Cloudinary:', uploadedImages.length);
-        imageUrls.push(...uploadedImages.map((img) => ({ 
-          url: img.url, 
-          publicId: img.publicId,
-          alt: '' 
-        })));
+
+        uploadedImages.forEach((img, index) => {
+          const file = req.files.images[index];
+          const isVideo = isVideoMimeType(file.mimetype);
+          const item = {
+            url: img.url,
+            publicId: img.publicId,
+            alt: '',
+          };
+
+          if (isVideo) {
+            mediaItems.push(createMediaEntry({
+              url: img.url,
+              publicId: img.publicId,
+              alt: '',
+              type: 'video',
+              source: 'cloudinary',
+            }));
+          } else {
+            imageUrls.push(item);
+          }
+        });
       } catch (uploadError) {
         console.error('❌ Image upload failed:', uploadError.message);
-        return res.status(400).json({ 
-          success: false, 
-          message: `Failed to upload images: ${uploadError.message}` 
+        return res.status(400).json({
+          success: false,
+          message: `Failed to upload images: ${uploadError.message}`,
         });
       }
     } else {
       console.log('⚠️ No images received with product creation');
+    }
+
+    if (req.files && Array.isArray(req.files.video) && req.files.video.length > 0) {
+      try {
+        console.log('🎬 Uploading dedicated video file');
+        const uploadedVideo = await uploadSingleImage(req.files.video[0].buffer, 'products', { resource_type: 'auto' });
+        mediaItems.push(createMediaEntry({
+          url: uploadedVideo.url,
+          publicId: uploadedVideo.publicId,
+          alt: '',
+          type: 'video',
+          source: 'cloudinary',
+        }));
+      } catch (uploadError) {
+        console.error('❌ Video upload failed:', uploadError.message);
+        return res.status(400).json({
+          success: false,
+          message: `Failed to upload video: ${uploadError.message}`,
+        });
+      }
+    }
+
+    if (externalVideoUrl) {
+      mediaItems.push(createMediaEntry({
+        url: externalVideoUrl,
+        type: 'video',
+        source: 'external',
+      }));
     }
 
     product = await Product.create({
@@ -175,6 +231,8 @@ exports.createProduct = async (req, res) => {
       sku,
       stock,
       images: imageUrls,
+      media: mediaItems,
+      videoUrl: externalVideoUrl,
       sizes: parseArrayField(sizes),
       material,
       brand,
@@ -396,46 +454,110 @@ exports.updateProduct = async (req, res) => {
     if (productLink !== undefined) product.productLink = productLink;
 
     // Handle new image uploads
-    if (req.files && req.files.length > 0) {
+    if (req.files && Array.isArray(req.files.images) && req.files.images.length > 0) {
       try {
         const uploadedImages = await uploadMultipleImages(
-          req.files.map(f => f.buffer),
+          req.files.images.map((f) => f.buffer),
           'products'
         );
-        product.images.push(...uploadedImages.map((img) => ({ 
-          url: img.url,
-          publicId: img.publicId,
-          alt: '' 
-        })));
+        product.images.push(
+          ...uploadedImages.map((img, index) => {
+            const file = req.files.images[index];
+            const isVideo = isVideoMimeType(file.mimetype);
+            if (isVideo) {
+              product.media = product.media || [];
+              product.media.push(createMediaEntry({
+                url: img.url,
+                publicId: img.publicId,
+                alt: '',
+                type: 'video',
+                source: 'cloudinary',
+              }));
+              return null;
+            }
+
+            return {
+              url: img.url,
+              publicId: img.publicId,
+              alt: '',
+            };
+          }).filter(Boolean)
+        );
       } catch (uploadError) {
         console.error('❌ Failed to upload new images:', uploadError.message);
-        return res.status(400).json({ 
-          success: false, 
-          message: `Failed to upload images: ${uploadError.message}` 
+        return res.status(400).json({
+          success: false,
+          message: `Failed to upload images: ${uploadError.message}`,
         });
       }
+    }
+
+    const externalVideoUrl = String(req.body.videoUrl || '').trim();
+    const existingVideo = String(req.body.existingVideo || '').trim();
+
+    if (req.files && Array.isArray(req.files.video) && req.files.video.length > 0) {
+      try {
+        const uploadedVideo = await uploadSingleImage(req.files.video[0].buffer, 'products', { resource_type: 'auto' });
+        product.media = product.media || [];
+
+        const replacedVideo = product.media.find((item) => item.url === existingVideo && item.type === 'video' && item.source === 'cloudinary');
+        if (replacedVideo && replacedVideo.publicId) {
+          await deleteImage(replacedVideo.publicId).catch((deleteErr) => {
+            console.warn('⚠️ Failed to delete replaced video from Cloudinary:', deleteErr.message);
+          });
+        }
+
+        product.media = product.media.filter((item) => item.url !== existingVideo);
+        product.media.push(createMediaEntry({
+          url: uploadedVideo.url,
+          publicId: uploadedVideo.publicId,
+          alt: '',
+          type: 'video',
+          source: 'cloudinary',
+        }));
+      } catch (uploadError) {
+        console.error('❌ Failed to upload new video:', uploadError.message);
+        return res.status(400).json({
+          success: false,
+          message: `Failed to upload video: ${uploadError.message}`,
+        });
+      }
+    } else if (externalVideoUrl) {
+      product.media = product.media || [];
+      // Keep only one external video entry for the dedicated video field
+      product.media = product.media.filter((item) => item.type !== 'video' || item.source !== 'external');
+      product.media.push(createMediaEntry({
+        url: externalVideoUrl,
+        type: 'video',
+        source: 'external',
+      }));
+    } else if (existingVideo === '') {
+      product.media = (product.media || []).filter((item) => item.type !== 'video' || item.source !== 'external');
+    }
+
+    if (externalVideoUrl !== undefined) {
+      product.videoUrl = externalVideoUrl;
     }
 
     // Handle image deletion - keep only images in existingImages array
     if (req.body.existingImages) {
       try {
-        const keep = Array.isArray(req.body.existingImages) 
-          ? req.body.existingImages 
+        const keep = Array.isArray(req.body.existingImages)
+          ? req.body.existingImages
           : JSON.parse(req.body.existingImages);
-        
+
         const toRemove = product.images.filter((img) => !keep.includes(img.url));
-        
-        // Delete removed images from Cloudinary
+
         if (toRemove.length > 0) {
           const publicIdsToDelete = toRemove
-            .filter(img => img.publicId)
-            .map(img => img.publicId);
-          
+            .filter((img) => img.publicId)
+            .map((img) => img.publicId);
+
           if (publicIdsToDelete.length > 0) {
             await deleteMultipleImages(publicIdsToDelete);
           }
         }
-        
+
         product.images = product.images.filter((img) => keep.includes(img.url));
       } catch (e) {
         console.warn('Could not parse existingImages', e.message || e);
@@ -459,19 +581,23 @@ exports.deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // Delete all product images from Cloudinary
-    if (product.images && product.images.length > 0) {
-      const publicIds = product.images
-        .filter(img => img.publicId)
-        .map(img => img.publicId);
-      
-      if (publicIds.length > 0) {
-        try {
-          await deleteMultipleImages(publicIds);
-        } catch (error) {
-          console.error('⚠️ Failed to delete some images from Cloudinary:', error.message);
-          // Continue with deletion even if image deletion fails
-        }
+    // Delete all product images and cloudinary media from Cloudinary
+    const imagePublicIds = (product.images || [])
+      .filter((img) => img.publicId)
+      .map((img) => img.publicId);
+
+    const mediaPublicIds = (product.media || [])
+      .filter((item) => item.source === 'cloudinary' && item.publicId)
+      .map((item) => item.publicId);
+
+    const publicIds = [...new Set([...imagePublicIds, ...mediaPublicIds])];
+
+    if (publicIds.length > 0) {
+      try {
+        await deleteMultipleImages(publicIds);
+      } catch (error) {
+        console.error('⚠️ Failed to delete some media from Cloudinary:', error.message);
+        // Continue with deletion even if media deletion fails
       }
     }
 

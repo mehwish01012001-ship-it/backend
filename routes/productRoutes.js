@@ -15,8 +15,14 @@ router.get('/', productController.getAllProducts);
 router.get('/slug/:slug', productController.getProductBySlug);
 router.get('/:id', productController.getProductById);
 
-router.post('/', protect, authorize('admin'), upload.array('images', 10), createProductValidator, handleValidationErrors, productController.createProduct);
-router.put('/:id', protect, authorize('admin'), upload.array('images', 10), productController.updateProduct);
+router.post('/', protect, authorize('admin'), upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'video', maxCount: 1 },
+]), createProductValidator, handleValidationErrors, productController.createProduct);
+router.put('/:id', protect, authorize('admin'), upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'video', maxCount: 1 },
+]), productController.updateProduct);
 router.delete('/:id', protect, authorize('admin'), productController.deleteProduct);
 
 module.exports = router;
