@@ -32,19 +32,26 @@ const transporter = nodemailer.createTransport({
     pass: EMAIL_PASS,
   },
 
-  requireTLS: !EMAIL_SECURE,
+  // requireTLS: !EMAIL_SECURE,
 
-  tls: {
+  // tls: {
+  //   rejectUnauthorized: false,
+  //   minVersion: "TLSv1.2",
+  //   servername: EMAIL_HOST,
+  // },
+
+
+
+   tls: {
     rejectUnauthorized: false,
-    minVersion: "TLSv1.2",
-    servername: EMAIL_HOST,
+  
   },
 
   family: 4,
 
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
+  connectionTimeout: 60000,
+  greetingTimeout: 60000,
+  socketTimeout: 60000,
 
   logger: true,
   debug: false,
