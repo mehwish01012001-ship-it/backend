@@ -3,48 +3,69 @@ dns.setDefaultResultOrder("ipv4first");
 
 const nodemailer = require("nodemailer");
 
-const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
-const emailPort = Number(process.env.EMAIL_PORT) || 587; // Changed from 465 to 587 for better Docker compatibility
-const emailSecure = process.env.EMAIL_SECURE === "true" && emailPort === 465; // Only secure for port 465
-const emailUser = process.env.EMAIL_USER;
-const emailPass = process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD;
+const EMAIL_HOST = process.env.EMAIL_HOST || "smtp.gmail.com";
+const EMAIL_PORT = Number(process.env.EMAIL_PORT || 587);
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD;
 
-console.log(`📧 Email Config: host=${emailHost}, port=${emailPort}, secure=${emailSecure}, user=${emailUser ? '***' : 'MISSING'}`);
+const EMAIL_SECURE =
+  process.env.EMAIL_SECURE === "true" || EMAIL_PORT === 465;
+
+console.log("======================================");
+console.log("📧 SMTP Configuration");
+console.log("--------------------------------------");
+console.log("Host      :", EMAIL_HOST);
+console.log("Port      :", EMAIL_PORT);
+console.log("Secure    :", EMAIL_SECURE);
+console.log("User      :", EMAIL_USER ? "***" : "MISSING");
+console.log("======================================");
 
 const transporter = nodemailer.createTransport({
-  host: emailHost,
-  port: emailPort,
-  secure: emailSecure,
-    family: 4,
+  host: EMAIL_HOST,
+
+  port: EMAIL_PORT,
+
+  secure: EMAIL_SECURE,
+
   auth: {
-    user: emailUser,
-    pass: emailPass,
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
   },
+
+  requireTLS: !EMAIL_SECURE,
+
   tls: {
     rejectUnauthorized: false,
     minVersion: "TLSv1.2",
+    servername: EMAIL_HOST,
   },
-  connectionTimeout: 20000,
-  socketTimeout: 20000,
-  greetingTimeout: 10000,
-  pool: {
-    maxConnections: 3,
-    maxMessages: 50,
-    rateDelta: 2000,
-    rateLimit: 7,
-  },
+
+  family: 4,
+
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
+
+  logger: true,
+  debug: false,
 });
 
-// Verify transporter connection on startup (non-blocking)
-setImmediate(() => {
-  transporter.verify((err, success) => {
-    if (err) {
-      console.error('⚠️  Email transporter verification failed:', err.message);
-      console.error('   Emails may not work, but server will continue running.');
-    } else {
-      console.log('✅ Email transporter verified and ready');
-    }
-  });
-});
+(async () => {
+  try {
+    await transporter.verify();
+
+    console.log("======================================");
+    console.log("✅ SMTP Ready");
+    console.log("======================================");
+  } catch (err) {
+    console.error("======================================");
+    console.error("❌ SMTP Verification Failed");
+    console.error("--------------------------------------");
+    console.error("Name :", err.name);
+    console.error("Code :", err.code);
+    console.error("Msg  :", err.message);
+    console.error("======================================");
+  }
+})();
 
 module.exports = transporter;
