@@ -34,7 +34,6 @@ exports.createOrder = async (req, res) => {
       paymentMethod,
       paymentNumber,
       notes,
-      coupon,
     } = req.body;
 
     // Parse items if sent as JSON string
@@ -174,9 +173,17 @@ exports.createOrder = async (req, res) => {
 
     const orderNumber = generateOrderNumber();
     const paymentReceipt = req.file ? `/uploads/${req.file.filename}` : undefined;
-    const orderNotes = [notes, ...orderItems.filter((item) => item.note?.trim()).map((item) => `Product Note (${item.productName || 'Item'}): ${item.note.trim()}`)].filter(Boolean).join('\n\n');
+    const orderNotes = [
+      notes,
+      ...orderItems
+        .filter((item) => item.note?.trim())
+        .map((item) => `Product Note (${item.productName || 'Item'}): ${item.note.trim()}`),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
-    const order = await Order.create({
+    // Fixed: Removed self-referencing `order` field property
+    const createdOrder = await Order.create({
       orderNumber,
       user: req.user?._id || null,
       items: orderItems,
@@ -187,33 +194,27 @@ exports.createOrder = async (req, res) => {
       paymentNumber,
       paymentReceipt,
       notes: orderNotes || notes,
-      ...(coupon ? { coupon } : {}),
     });
 
-    // Clear cart if user is authenticated
-    if (req.user?._id) {
-      await Cart.findOneAndDelete({ user: req.user._id });
-    }
-
-    // Return successful response immediately
+    // Send HTTP response to client immediately
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
-      order,
+      order: createdOrder,
     });
 
     // Asynchronously dispatch email notifications in background
     const customerEmail = req.user?.email || shippingAddress.email;
 
-    console.log(`📧 Order #${order.orderNumber} placed. Sending emails to admin and customer...`);
-    
+    console.log(`📧 Order #${createdOrder.orderNumber} placed. Sending emails to admin and customer...`);
+
     Promise.allSettled([
-      sendOrderEmail(order),
+      sendOrderEmail(createdOrder),
       customerEmail
         ? sendOrderConfirmationEmail(
             customerEmail,
-            order.orderNumber,
-            order.items,
+            createdOrder.orderNumber,
+            createdOrder.items,
             totalAmount
           )
         : Promise.resolve(),
@@ -269,8 +270,7 @@ exports.getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate('items.product')
-      .populate('user')
-      .populate('coupon');
+      .populate('user');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });

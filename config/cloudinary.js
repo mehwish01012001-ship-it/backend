@@ -38,7 +38,6 @@ const CLOUDINARY_FOLDERS = {
   // Banners and Promotions
   banners: 'rq-fashion/banners',
   offers: 'rq-fashion/offers',
-  coupons: 'rq-fashion/coupons',
 
   // Content
   reviews: 'rq-fashion/reviews',
