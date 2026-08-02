@@ -270,6 +270,9 @@ exports.createOrder = async (req, res) => {
 } catch (err) {
   console.error("❌ Email sending failed:", err);
 }
+
+
+
   } catch (error) {
     console.error('Create Order Error:', error);
     if (!res.headersSent) {
