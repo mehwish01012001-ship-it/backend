@@ -25,6 +25,10 @@ const normalizeAddress = (address) => {
   };
 };
 
+
+
+
+
 exports.createOrder = async (req, res) => {
   try {
     let {
@@ -182,7 +186,6 @@ exports.createOrder = async (req, res) => {
       .filter(Boolean)
       .join('\n\n');
 
-    // Fixed: Removed self-referencing `order` field property
     const createdOrder = await Order.create({
       orderNumber,
       user: req.user?._id || null,
@@ -205,6 +208,16 @@ exports.createOrder = async (req, res) => {
 
     // Asynchronously dispatch email notifications in background
     const customerEmail = req.user?.email || shippingAddress.email;
+
+    // --- DEBUG LOGS ADDED HERE ---
+    console.log("Starting email dispatch...");
+    console.log("Customer Email:", customerEmail);
+    console.log("Shipping Email:", shippingAddress.email);
+    console.log("User Email:", req.user?.email);
+
+    if (!customerEmail) {
+      console.warn("⚠️ Warning: No valid customer email found. Customer confirmation email skipped.");
+    }
 
     console.log(`📧 Order #${createdOrder.orderNumber} placed. Sending emails to admin and customer...`);
 
