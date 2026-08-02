@@ -221,26 +221,55 @@ exports.createOrder = async (req, res) => {
 
     console.log(`📧 Order #${createdOrder.orderNumber} placed. Sending emails to admin and customer...`);
 
-    Promise.allSettled([
-      sendOrderEmail(createdOrder),
-      customerEmail
-        ? sendOrderConfirmationEmail(
-            customerEmail,
-            createdOrder.orderNumber,
-            createdOrder.items,
-            totalAmount
-          )
-        : Promise.resolve(),
-    ]).then((results) => {
-      results.forEach((result, index) => {
-        const emailType = index === 0 ? 'ADMIN' : 'CUSTOMER';
-        if (result.status === 'fulfilled') {
-          console.log(`✅ ${emailType} email dispatched successfully`);
-        } else {
-          console.error(`❌ ${emailType} email failed:`, result.reason?.message || result.reason);
-        }
-      });
-    });
+    // Promise.allSettled([
+    //   sendOrderEmail(createdOrder),
+    //   customerEmail
+    //     ? sendOrderConfirmationEmail(
+    //         customerEmail,
+    //         createdOrder.orderNumber,
+    //         createdOrder.items,
+    //         totalAmount
+    //       )
+    //     : Promise.resolve(),
+    // ]).then((results) => {
+    //   results.forEach((result, index) => {
+    //     const emailType = index === 0 ? 'ADMIN' : 'CUSTOMER';
+    //     if (result.status === 'fulfilled') {
+    //       console.log(`✅ ${emailType} email dispatched successfully`);
+    //     } else {
+    //       console.error(`❌ ${emailType} email failed:`, result.reason?.message || result.reason);
+    //     }
+    //   });
+    // });
+
+
+
+
+
+
+
+    try {
+  // Admin Email
+  await sendOrderEmail(createdOrder);
+  console.log("✅ ADMIN email sent successfully");
+
+  // Customer Email
+  if (customerEmail) {
+    await sendOrderConfirmationEmail(
+      customerEmail,
+      createdOrder.orderNumber,
+      createdOrder.items,
+      totalAmount
+    );
+
+    console.log("✅ CUSTOMER email sent successfully");
+  } else {
+    console.log("⚠️ No customer email found");
+  }
+
+} catch (err) {
+  console.error("❌ Email sending failed:", err);
+}
   } catch (error) {
     console.error('Create Order Error:', error);
     if (!res.headersSent) {
