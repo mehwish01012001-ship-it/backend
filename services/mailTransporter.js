@@ -179,90 +179,11 @@
 
 
 
-const dns = require("dns");
-const nodemailer = require("nodemailer");
+const { sendMail, verifyConnection } = require('./smtpService');
 
-// Force IPv4 (Railway friendly)
-dns.setDefaultResultOrder("ipv4first");
-
-// Environment Variables
-const EMAIL_HOST = process.env.EMAIL_HOST;
-const EMAIL_PORT = Number(process.env.EMAIL_PORT || 587);
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
-const EMAIL_SECURE =
-  process.env.EMAIL_SECURE === "true" || EMAIL_PORT === 465;
-
-// Validate Configuration
-if (!EMAIL_HOST || !EMAIL_USER || !EMAIL_PASS) {
-  console.error("======================================");
-  console.error("❌ SMTP Configuration Missing");
-  console.error("--------------------------------------");
-  console.error("EMAIL_HOST :", EMAIL_HOST || "Missing");
-  console.error("EMAIL_USER :", EMAIL_USER ? "***" : "Missing");
-  console.error("EMAIL_PASS :", EMAIL_PASS ? "***" : "Missing");
-  console.error("======================================");
-}
-
-// Startup Logs
-console.log("======================================");
-console.log("📧 SMTP Configuration");
-console.log("--------------------------------------");
-console.log("Host      :", EMAIL_HOST);
-console.log("Port      :", EMAIL_PORT);
-console.log("Secure    :", EMAIL_SECURE);
-console.log("User      :", EMAIL_USER ? "***" : "Missing");
-console.log("Node Env  :", process.env.NODE_ENV || "development");
-console.log("======================================");
-
-// Create Transport
-const transporter = nodemailer.createTransport({
-  host: EMAIL_HOST,
-  port: EMAIL_PORT,
-  secure: EMAIL_SECURE,
-
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-
-  requireTLS: !EMAIL_SECURE,
-
-  tls: {
-    rejectUnauthorized: false,
-    minVersion: "TLSv1.2",
-  },
-
-  family: 4,
-
-  pool: true,
-  maxConnections: 1,
-  maxMessages: Infinity,
-
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-  socketTimeout: 15000,
-
-  logger: true,
-  debug: true,
-});
-
-// Optional verification (Only Local Development)
-if (process.env.NODE_ENV !== "production") {
-  transporter
-    .verify()
-    .then(() => {
-      console.log("======================================");
-      console.log("✅ SMTP Connected Successfully");
-      console.log("======================================");
-    })
-    .catch((err) => {
-      console.error("======================================");
-      console.error("❌ SMTP Verify Failed");
-      console.error("--------------------------------------");
-      console.error(err);
-      console.error("======================================");
-    });
-}
+const transporter = {
+  sendMail: async (mailOptions) => sendMail(mailOptions),
+  verify: async () => verifyConnection(),
+};
 
 module.exports = transporter;

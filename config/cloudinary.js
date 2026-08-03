@@ -7,16 +7,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-/**
- * Upload folder mapping for different content types
- * Maps content types to Cloudinary folder paths
- */
+
 const CLOUDINARY_FOLDERS = {
   // Product images
   products: 'rq-fashion/products',
   productVariants: 'rq-fashion/products/variants',
   productGallery: 'rq-fashion/products/gallery',
-
   // Category and Collection
   categories: 'rq-fashion/categories',
   subcategories: 'rq-fashion/categories/subcategories',

@@ -1,166 +1,50 @@
-const transporter = require("./mailTransporter");
+const { sendMail } = require('./smtpService');
+const {
+  welcomeEmailTemplate,
+  orderConfirmationTemplate,
+  passwordResetTemplate,
+  shippingNotificationTemplate,
+} = require('./emailTemplates');
 
-const emailFrom =
-  process.env.EMAIL_FROM ||
-  process.env.EMAIL_USER ||
-  "no-reply@rqfashion.com";
-
-const createMailOptions = (to, subject, html) => ({
-  from: emailFrom,
-  to,
-  subject,
-  html,
-});
-
-const sendWithRetry = async (mailOptions, maxRetries = 5) => {
-  console.log(`📧 Attempting to send email to: ${mailOptions.to}`);
-  let lastError;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`✅ Email sent successfully on attempt ${attempt}:`, info.messageId);
-      return;
-    } catch (error) {
-      lastError = error;
-      const isLastAttempt = attempt === maxRetries;
-      const errorCode = error.code || error.name || 'UNKNOWN';
-      
-      console.error(
-        `❌ Email attempt ${attempt}/${maxRetries} failed (${errorCode}):`,
-        error.message
-      );
-      
-      if (!isLastAttempt) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 15000);
-        console.log(`⏳ Retrying in ${delay}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-  }
-  console.error(`❌ Email delivery failed after ${maxRetries} attempts (${lastError.code || lastError.name}):`, lastError.message);
-  // Don't throw - let background tasks fail silently
+const sendWelcomeEmail = async (email, firstName) => {
+  const html = welcomeEmailTemplate(firstName);
+  return sendMail({
+    to: email,
+    subject: 'Welcome to RQ Fashion',
+    html,
+  });
 };
 
-// Welcome Email
-exports.sendWelcomeEmail = async (email, firstName) => {
-  const mailOptions = createMailOptions(
-    email,
-    "Welcome to RQ Fashion",
-    `
-      <h1>Welcome to RQ Fashion, ${firstName}!</h1>
-      <p>Thank you for joining our premium fashion community.</p>
-      <p>Explore our exclusive collection.</p>
-    `
-  );
-
-  try {
-    await sendWithRetry(mailOptions);
-  } catch (error) {
-    console.error("Welcome email error:", error.message);
-    throw error;
-  }
+const sendOrderConfirmationEmail = async (email, orderNumber, items, totalAmount) => {
+  const html = orderConfirmationTemplate(orderNumber, totalAmount);
+  return sendMail({
+    to: email,
+    subject: `Order Confirmation - ${orderNumber}`,
+    html,
+  });
 };
 
-// Order Confirmation Email
-exports.sendOrderConfirmationEmail = async (
-  email,
-  orderNumber,
-  items,
-  totalAmount
-) => {
-  console.log(`📨 Sending order confirmation to customer: ${email}...`);
-  
-  const mailOptions = createMailOptions(
-    email,
-    `Order Confirmation - ${orderNumber}`,
-    `
-      <h1>Order Confirmed ✅</h1>
-
-      <p>Thank you for your order!</p>
-
-      <p>
-      <strong>Order Number:</strong>
-      ${orderNumber}
-      </p>
-
-      <p>
-      <strong>Total Amount:</strong>
-      Rs. ${Number(totalAmount || 0).toFixed(2)}
-      </p>
-
-      <p>
-      You will receive shipping updates soon.
-      </p>
-    `
-  );
-
-  try {
-    await sendWithRetry(mailOptions);
-    console.log(`✅ Order confirmation sent to ${email}`);
-  } catch (error) {
-    console.error(`❌ Order confirmation email error for ${email}:`, error.message);
-    throw error;
-  }
+const sendPasswordResetEmail = async (email, resetLink) => {
+  const html = passwordResetTemplate(resetLink);
+  return sendMail({
+    to: email,
+    subject: 'Password Reset Request',
+    html,
+  });
 };
 
-// Password Reset Email
-exports.sendPasswordResetEmail = async (
-  email,
-  resetLink
-) => {
-  const mailOptions = createMailOptions(
-    email,
-    "Password Reset Request",
-    `
-      <h1>Reset Your Password</h1>
-
-      <p>
-      Click the link below:
-      </p>
-
-      <a href="${resetLink}">
-      Reset Password
-      </a>
-
-      <p>
-      This link expires in 1 hour.
-      </p>
-    `
-  );
-
-  try {
-    await sendWithRetry(mailOptions);
-  } catch (error) {
-    console.error("Password reset email error:", error.message);
-  }
+const sendShippingNotificationEmail = async (email, orderNumber, trackingNumber) => {
+  const html = shippingNotificationTemplate(orderNumber, trackingNumber);
+  return sendMail({
+    to: email,
+    subject: `Your Order is Shipped - ${orderNumber}`,
+    html,
+  });
 };
 
-// Shipping Notification
-exports.sendShippingNotificationEmail = async (
-  email,
-  orderNumber,
-  trackingNumber
-) => {
-  const mailOptions = createMailOptions(
-    email,
-    `Your Order is Shipped - ${orderNumber}`,
-    `
-      <h1>Order Shipped 🚚</h1>
-
-      <p>
-      Your order ${orderNumber} has been shipped.
-      </p>
-
-      <p>
-      Tracking Number:
-      ${trackingNumber}
-      </p>
-    `
-  );
-
-  try {
-    await sendWithRetry(mailOptions);
-  } catch (error) {
-    console.error("Shipping email error:", error.message);
-  }
+module.exports = {
+  sendWelcomeEmail,
+  sendOrderConfirmationEmail,
+  sendPasswordResetEmail,
+  sendShippingNotificationEmail,
 };

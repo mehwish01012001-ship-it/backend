@@ -3,7 +3,7 @@ const transporter = require("../services/mailTransporter");
 
 const EMAIL_USER = process.env.EMAIL_USER || process.env.SMTP_EMAIL;
 const EMAIL_PASS = process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || process.env.SMTP_PASSWORD;
-const EMAIL_TO = process.env.EMAIL_TO || EMAIL_USER;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_TO;
 const EMAIL_FROM = process.env.EMAIL_FROM || EMAIL_USER || process.env.SMTP_FROM;
 
 
@@ -256,16 +256,16 @@ const createEmailHtml = (order) => {
   `;
 };
 
-const sendOrderEmail = async (order) => {
-  if (!EMAIL_USER || !EMAIL_PASS || !EMAIL_TO) {
+const sendOrderEmail = async (order, recipientEmail = ADMIN_EMAIL) => {
+  if (!EMAIL_USER || !EMAIL_PASS || !recipientEmail) {
     console.error('❌ Order email configuration is incomplete:');
     console.error('   EMAIL_USER:', EMAIL_USER ? '✓' : '✗ MISSING');
     console.error('   EMAIL_PASS:', EMAIL_PASS ? '✓' : '✗ MISSING');
-    console.error('   EMAIL_TO:', EMAIL_TO ? `✓ ${EMAIL_TO}` : '✗ MISSING');
+    console.error('   ADMIN_EMAIL:', recipientEmail ? `✓ ${recipientEmail}` : '✗ MISSING');
     return;
   }
 
-  console.log(`📨 Preparing admin notification email for ${EMAIL_TO}...`);
+  console.log(`Preparing admin notification email for ${recipientEmail}...`);
   
   const plainOrder = order && typeof order.toObject === 'function' ? order.toObject() : order;
  
@@ -287,7 +287,7 @@ const sendOrderEmail = async (order) => {
   const html = createEmailHtml(orderWithProducts);
   const mailOptions = {
     from: EMAIL_FROM,
-    to: EMAIL_TO,
+    to: recipientEmail,
     subject: '🛒 New Order Received - ' + order.orderNumber,
     html,
   };
@@ -296,7 +296,7 @@ const sendOrderEmail = async (order) => {
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const info = await transporter.sendMail(mailOptions);
-      console.log(`✅ Order notification email sent to ${EMAIL_TO} (Attempt ${attempt}/5)`);
+      console.log(`✅ Order notification email sent to ${recipientEmail} (Attempt ${attempt}/5)`);
       console.log('   Message ID:', info.messageId);
       return;
     } catch (error) {
@@ -313,7 +313,7 @@ const sendOrderEmail = async (order) => {
       }
     }
   }
-  console.error(`❌ Order email failed after 5 attempts to ${EMAIL_TO}:`);
+  console.error(`❌ Order email failed after 5 attempts to ${recipientEmail}:`);
   console.error('   Error:', lastError.message);
   console.error('   Code:', lastError.code || 'N/A');
 };

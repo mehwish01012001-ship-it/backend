@@ -250,10 +250,15 @@ exports.createOrder = async (req, res) => {
 
     try {
   // Admin Email
-  await sendOrderEmail(createdOrder);
-  console.log("✅ ADMIN email sent successfully");
-
-  // Customer Email
+  const adminRecipient = process.env.ADMIN_EMAIL || process.env.EMAIL_TO;
+  if (adminRecipient) {
+    await sendOrderEmail(createdOrder, adminRecipient);
+    console.log("✅ ADMIN email sent successfully");
+  } else {
+    console.log("⚠️ No admin email recipient configured; skipping admin order email");
+  }
+ 
+  // Customer Email 
   if (customerEmail) {
     await sendOrderConfirmationEmail(
       customerEmail,
